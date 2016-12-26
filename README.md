@@ -10,12 +10,14 @@ stk3x1x
 accel:
 mxc400x
 
+sdcard
 cherger
 brightness
 buttons ( vol "-" partially)
 speaker
 detect ACCDET
 headphones
+tps65132 on i2c for lcm : ok
 
 Not working:
 other revisions?
