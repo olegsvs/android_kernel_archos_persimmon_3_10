@@ -242,13 +242,6 @@
 				debounce = <0x3 0x0>;
 			};
 
-			MSDC1_INS@4 {
-				compatible = "mediatek, MSDC1_INS-eint";
-				interrupt-parent = <0x6>;
-				interrupts = <0x4 0x8>;
-				debounce = <0x4 0x3e8>;
-			};
-
 			ACCDET@6 {
 				compatible = "mediatek, ACCDET-eint";
 				interrupt-parent = <0x6>;
