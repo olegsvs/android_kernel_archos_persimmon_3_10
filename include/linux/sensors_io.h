@@ -57,9 +57,38 @@ typedef struct {
 #define COMPAT_GSENSOR_IOCTL_GET_CALI				_IOW(GSENSOR, 0x07, SENSOR_DATA)
 #define COMPAT_GSENSOR_IOCTL_CLR_CALI				_IO(GSENSOR, 0x08)
 #define COMPAT_GSENSOR_IOCTL_READ_SENSORDATA       _IOR(GSENSOR, 0x03, compat_int_t)
+/* Vanzo:wuzhiyong on: Mon, 16 Mar 2015 14:18:57 +0800
+ * 32bit userspace call 64bit driver
+ */
+#define COMPAT_GSENSOR_IOCTL_INIT                  _IO(GSENSOR,  0x01)
+#define COMPAT_GSENSOR_IOCTL_READ_CHIPINFO         _IOR(GSENSOR, 0x02, compat_int_t)
+#define COMPAT_GSENSOR_IOCTL_READ_OFFSET			_IOR(GSENSOR, 0x04, GSENSOR_VECTOR3D)
+#define COMPAT_GSENSOR_IOCTL_READ_GAIN				_IOR(GSENSOR, 0x05, GSENSOR_VECTOR3D)
+#define COMPAT_GSENSOR_IOCTL_READ_RAW_DATA			_IOR(GSENSOR, 0x06, compat_int_t)
 #endif
 /* mCube add start */
 /* G-sensor */
+
+#define GSENSOR_IOCTL_GET_DELAY             _IOR(GSENSOR, 0x10, int)
+#define GSENSOR_IOCTL_GET_STATUS            _IOR(GSENSOR, 0x11, int)
+#define GSENSOR_IOCTL_GET_DATA              _IOR(GSENSOR, 0x12, int[3])
+#define GSENSOR_IOCTL_SET_DATA              _IOWR(GSENSOR, 0x13, int[3])
+#define GSENSOR_IOCTL_GET_TEMP              _IOR(GSENSOR, 0x14, int)
+#define GSENSOR_IOCTL_GET_DANT              _IOR(GSENSOR, 0x15, int[4])
+#define GSENSOR_IOCTL_READ_REG              _IOR(GSENSOR, 0x19, int)
+#define GSENSOR_IOCTL_WRITE_REG             _IOW(GSENSOR, 0x1A, int)
+
+#ifdef CONFIG_COMPAT
+#define COMPAT_GSENSOR_IOCTL_GET_DELAY             _IOR(GSENSOR, 0x10, compat_int_t)
+#define COMPAT_GSENSOR_IOCTL_GET_STATUS            _IOR(GSENSOR, 0x11, compat_int_t)
+#define COMPAT_GSENSOR_IOCTL_GET_DATA              _IOR(GSENSOR, 0x12, compat_int_t[3])
+#define COMPAT_GSENSOR_IOCTL_SET_DATA              _IOWR(GSENSOR, 0x13, compat_int_t[3])
+#define COMPAT_GSENSOR_IOCTL_GET_TEMP              _IOR(GSENSOR, 0x14, compat_int_t)
+#define COMPAT_GSENSOR_IOCTL_GET_DANT              _IOR(GSENSOR, 0x15, compat_int_t[4])
+#define COMPAT_GSENSOR_IOCTL_READ_REG              _IOR(GSENSOR, 0x19, compat_int_t)
+#define COMPAT_GSENSOR_IOCTL_WRITE_REG             _IOW(GSENSOR, 0x1A, compat_int_t)
+#endif
+//End of Vanzo:wuzhiyong
 
 #define GSENSOR_MCUBE_IOCTL_READ_RBM_DATA      _IOR(GSENSOR, 0x09, SENSOR_DATA)
 #define GSENSOR_MCUBE_IOCTL_SET_RBM_MODE       _IO(GSENSOR, 0x0a)
@@ -89,6 +118,14 @@ typedef struct {
 #define MSENSOR_IOCTL_SENSOR_ENABLE         _IOW(MSENSOR, 0x51, int)
 #define MSENSOR_IOCTL_READ_FACTORY_SENSORDATA  _IOW(MSENSOR, 0x52, int)
 
+/*Vanzo:wuzhiyong on: Mon, 16 Mar 2015 14:18:57 +0800
+ * 32bit userspace call 64bit driver
+ */
+#define MMC3524X_IOC_READ_REG           _IOWR(MSENSOR, 0x23, unsigned char)
+#define MMC3524X_IOC_WRITE_REG          _IOW(MSENSOR,  0x24, unsigned char[2])
+#define MMC3524X_IOC_READ_REGS          _IOWR(MSENSOR, 0x25, unsigned char[10])
+//End of Vanzo:wuzhiyong
+
 #ifdef CONFIG_COMPAT
 /*COMPACT IOCTL for 64bit kernel running 32bit daemon*/
 #define COMPAT_MSENSOR_IOCTL_INIT					_IO(MSENSOR, 0x01)
@@ -103,6 +140,19 @@ typedef struct {
 #define COMPAT_MSENSOR_IOCTL_SET_CALIDATA		    _IOW(MSENSOR, 0x0a, compat_int_t)
 #define COMPAT_MSENSOR_IOCTL_SENSOR_ENABLE          _IOW(MSENSOR, 0x51, compat_int_t)
 #define COMPAT_MSENSOR_IOCTL_READ_FACTORY_SENSORDATA  _IOW(MSENSOR, 0x52, compat_int_t)
+/*Vanzo:wuzhiyong on: Mon, 16 Mar 2015 14:18:57 +0800
+ * 32bit userspace call 64bit driver
+ */
+#define COMPAT_QMC6983_SET_RANGE        _IOW(QMC6983_IOCTL_BASE, 0x01, compat_int_t)
+#define COMPAT_QMC6983_SET_MODE         _IOW(QMC6983_IOCTL_BASE, 0x02, compat_int_t)
+#define COMPAT_QMC6983_SET_BANDWIDTH    _IOW(QMC6983_IOCTL_BASE, 0x03, compat_int_t)
+#define COMPAT_QMC6983_READ_MAGN_XYZ    _IOR(QMC6983_IOCTL_BASE, 0x04, compat_int_t)
+#define COMPAT_QMC6983_SET_REGISTER_A   _IOW(QMC6983_IOCTL_BASE, 0x05, char *)
+#define COMPAT_QMC6983_SELF_TEST       _IOWR(QMC6983_IOCTL_BASE, 0x06, char *)
+#define COMPAT_MMC3524X_IOC_READ_REG           _IOWR(MSENSOR, 0x23, unsigned char)
+#define COMPAT_MMC3524X_IOC_WRITE_REG          _IOW(MSENSOR,  0x24, unsigned char[2])
+#define COMPAT_MMC3524X_IOC_READ_REGS          _IOWR(MSENSOR, 0x25, unsigned char[10])
+//End of Vanzo:wuzhiyong
 #endif
 
 /* IOCTLs for AKM library */

@@ -1,3 +1,4 @@
 include $(srctree)/drivers/misc/mediatek/Makefile.custom
 
-obj-y	:= ltr559.o
+obj-y	:=  cust_acc.o
+

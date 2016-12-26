@@ -19,5 +19,9 @@ ifeq ($(CONFIG_MTK_LTR559),y)
 obj-y	+=  alsps/ltr559/
 endif
 
-obj-y   +=  accelerometer/KXTJ2_1009-new/
+ifeq ($(CONFIG_MTK_STK3X1X_DRIVER),y)
+obj-y	+=  alsps/stk3x1x_driver/
+endif
+
+obj-y   +=  accelerometer/mxc400x-new/
 endif

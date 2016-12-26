@@ -27,19 +27,9 @@ endif
 ifeq ($(CONFIG_MTK_STK3X1X),y)
 obj-y	+=  stk3x1x/
 endif
-
-ifeq ($(CONFIG_MTK_LTR559ALS),y)
-obj-y	+=  ltr_559als/
+ifeq ($(CONFIG_MTK_STK3X1X_DRIVER),y)
+obj-y	+=  stk3x1x_driver/
 endif
-
-ifeq ($(CONFIG_MTK_LTR559),y)
-obj-y	+=  ltr559/
-endif
-
-ifeq ($(CONFIG_MTK_LTR559_LITEON),y)
-obj-y	+=  ltr559_liteon/
-endif
-
 ifeq ($(CONFIG_MTK_CM36652_NEW),y)
 obj-y	+=  cm36652-new/
 endif
@@ -57,7 +47,4 @@ obj-y	+=  APDS9930-new/
 endif
 ifeq ($(CONFIG_MTK_STK3X1X_NEW),y)
 obj-y	+=  stk3x1x-new/
-endif
-ifeq ($(CONFIG_MTK_RPR410),y)
-obj-y	+=  rpr410/
 endif

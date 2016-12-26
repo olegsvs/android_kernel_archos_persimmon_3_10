@@ -43,6 +43,10 @@
 #include <linux/wakelock.h>
 #include <linux/sched.h>
 
+#ifdef CONFIG_POCKETMOD
+#include <linux/pocket_mod.h>
+#endif
+
 #include <alsps.h>
 #include <linux/batch.h>
 #ifdef CUSTOM_KERNEL_SENSORHUB
@@ -518,6 +522,24 @@ static int epl2182_get_als_value(struct epl2182_priv *obj, u16 als)
     }
 }
 
+
+static int epl2182_get_ps_value(struct epl2182_priv *obj, u16 ps)
+{
+
+	int mask = atomic_read(&obj->ps_mask);
+	int  val;
+
+	u8 flag;
+
+	
+	
+	val = -1;
+
+return val;
+
+	
+
+}
 
 static int set_psensor_intr_threshold(uint16_t low_thd, uint16_t high_thd)
 {
@@ -1783,7 +1805,20 @@ static int ps_open_report_data(int open)
 static int ps_enable_nodata(int en)
 {
 	int res = 0;
-    	APS_LOG("epl2182_obj als enable value = %d\n", en);
+#ifdef CUSTOM_KERNEL_SENSORHUB
+    SCP_SENSOR_HUB_DATA req;
+    int len;
+#endif
+
+    APS_LOG("epl2182_obj als enable value = %d\n", en);
+
+#ifdef CUSTOM_KERNEL_SENSORHUB
+    req.activate_req.sensorType = ID_PROXIMITY;
+    req.activate_req.action = SENSOR_HUB_ACTIVATE;
+	req.activate_req.enable = en;
+	len = sizeof(req.activate_req);
+	res = SCP_sensorHub_req_send(&req, &len, 1);
+#else
 	if(!epl2182_obj)
 	{
 		APS_ERR("epl2182_obj is null!!\n");
@@ -1815,6 +1850,7 @@ static int ps_enable_nodata(int en)
         }
         clear_bit(CMC_BIT_PS, &epl2182_obj->enable);
     }
+#endif //#ifdef CUSTOM_KERNEL_SENSORHUB
     
 	if(res){
 		APS_ERR("als_enable_nodata is failed!!\n");
@@ -2051,14 +2087,14 @@ static int epl2182_i2c_probe(struct i2c_client *client, const struct i2c_device_
 	}
 
 
-	err = batch_register_support_info(ID_LIGHT,als_ctl.is_support_batch, 1, 0);
+	err = batch_register_support_info(ID_LIGHT,als_ctl.is_support_batch, 100, 0);
 	if(err)
 	{
 		APS_ERR("register light batch support err = %d\n", err);
 		goto exit_sensor_obj_attach_fail;
 	}
 	
-	err = batch_register_support_info(ID_PROXIMITY,ps_ctl.is_support_batch, 1, 0);
+	err = batch_register_support_info(ID_PROXIMITY,ps_ctl.is_support_batch, 100, 0);
 	if(err)
 	{
 		APS_ERR("register proximity batch support err = %d\n", err);
@@ -2123,7 +2159,36 @@ static int epl2182_i2c_remove(struct i2c_client *client)
 }
 
 
+#ifdef CONFIG_POCKETMOD
+int epl2182_pocket_detection_check(void)
+{
+	int ps_val;
+	int als_val;
 
+	struct epl2182_priv *obj = epl2182_obj;
+	
+	if(obj == NULL)
+	{
+		APS_DBG("[epl2182] epl2182_obj is NULL!");
+		return 0;
+	}
+	else
+	{
+		elan_epl2182_psensor_enable(obj->client, 1);
+
+		msleep(50);
+
+		ps_val = epl2182_get_ps_value(obj, obj->ps);
+		als_val = epl2182_get_als_value(obj, obj->ps);
+
+		APS_DBG("[epl2182] %s als_val = %d, ps_val = %d\n", __func__, als_val, ps_val);
+
+		elan_epl2182_psensor_enable(obj->client, 0);
+
+		return (ps_val);
+	}
+}
+#endif
 /*----------------------------------------------------------------------------*/
 static int alsps_local_init(void)
 {

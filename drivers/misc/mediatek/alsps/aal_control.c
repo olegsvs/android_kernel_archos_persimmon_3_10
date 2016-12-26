@@ -124,3 +124,5 @@ late_initcall(AAL_init);
 MODULE_AUTHOR("Mediatek");
 MODULE_DESCRIPTION("AAL driver");
 MODULE_LICENSE("GPL");
+
+
