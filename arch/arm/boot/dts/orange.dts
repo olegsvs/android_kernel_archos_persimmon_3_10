@@ -221,11 +221,32 @@
 			linux,phandle = <0x6>;
 			phandle = <0x6>;
 
-			IRQ_NFC@2 {
-				compatible = "mediatek, IRQ_NFC-eint";
+			GSE_1@1 {
+				compatible = "mediatek, GSE_1-eint";
 				interrupt-parent = <0x6>;
-				interrupts = <0x2 0x4>;
+				interrupts = <0x1 0x8>;
+				debounce = <0x1 0x0>;
+			};
+
+			ALS@2 {
+				compatible = "mediatek, ALS-eint";
+				interrupt-parent = <0x6>;
+				interrupts = <0x2 0x8>;
 				debounce = <0x2 0x0>;
+			};
+
+			FINGER_PRINT@3 {
+				compatible = "mediatek, FINGER_PRINT-eint";
+				interrupt-parent = <0x6>;
+				interrupts = <0x3 0x1>;
+				debounce = <0x3 0x0>;
+			};
+
+			MSDC1_INS@4 {
+				compatible = "mediatek, MSDC1_INS-eint";
+				interrupt-parent = <0x6>;
+				interrupts = <0x4 0x8>;
+				debounce = <0x4 0x3e8>;
 			};
 
 			ACCDET@6 {
@@ -242,27 +263,6 @@
 				debounce = <0xa 0x0>;
 			};
 
-			MHALL@64 {
-				compatible = "mediatek, MHALL-eint";
-				interrupt-parent = <0x6>;
-				interrupts = <0x40 0x8>;
-				debounce = <0x40 0x0>;
-			};
-
-			ALS@65 {
-				compatible = "mediatek, ALS-eint";
-				interrupt-parent = <0x6>;
-				interrupts = <0x41 0x8>;
-				debounce = <0x41 0x0>;
-			};
-
-			GSE_1@66 {
-				compatible = "mediatek, GSE_1-eint";
-				interrupt-parent = <0x6>;
-				interrupts = <0x42 0x8>;
-				debounce = <0x42 0x0>;
-			};
-
 			GYRO@67 {
 				compatible = "mediatek, GYRO-eint";
 				interrupt-parent = <0x6>;
@@ -275,6 +275,13 @@
 				interrupt-parent = <0x6>;
 				interrupts = <0x4e 0x4>;
 				debounce = <0x4e 0x0>;
+			};
+
+			KPD_SLIDE@100 {
+				compatible = "mediatek, KPD_SLIDE-eint";
+				interrupt-parent = <0x6>;
+				interrupts = <0x64 0x2>;
+				debounce = <0x64 0xc350>;
 			};
 		};
 
@@ -810,7 +817,7 @@
 			audmiso-gpio = <0x90 0x0>;
 			audmosi-gpio = <0x91 0x0>;
 			vowclk-gpio = <0x94 0x0>;
-			extspkamp-gpio = <0x50 0x0>;
+			extspkamp-gpio = <0x61 0x0>;
 			i2s1clk-gpio = <0x87 0x0>;
 			i2s1dat-gpio = <0x89 0x0>;
 			i2s1mclk-gpio = <0x86 0x0>;
@@ -1288,9 +1295,5 @@
 	MOBICORE {
 		compatible = "trustonic,mobicore";
 		interrupts = <0x0 0xf8 0x1>;
-	};
-
-	mt-extmem@0 {
-		compatible = "mediatek,mt-extmem";
 	};
 };
