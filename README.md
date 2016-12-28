@@ -7,6 +7,7 @@ touch:
 msg2835 ( msg2xxx on i2c)
 alsps:
 stk3x1x
+als work
 accel:
 mxc400x
 
@@ -22,5 +23,5 @@ tps65132 on i2c for lcm : ok
 Not working:
 other revisions?
 camers
-alsps values is bad
-
+ps not work :
+ps_enable_nodata 4937 : als_enable_nodata is failed!!
