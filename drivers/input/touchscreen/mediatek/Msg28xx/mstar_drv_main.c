@@ -238,7 +238,7 @@ extern struct mutex g_QMutex;
 
 u32 SLAVE_I2C_ID_DBBUS = (0xC4>>1); //0x62 // for MSG21XX/MSG21XXA/MSG26XXM/MSG28XX
 //u32 SLAVE_I2C_ID_DBBUS = (0xB2>>1); //0x59 // for MSG22XX
-u32 SLAVE_I2C_ID_DWI2C = (0x4C>>1); //0x26 
+u32 SLAVE_I2C_ID_DWI2C = (0x4C>>1); //0x26 //i2c_addr
 
 
 #ifdef CONFIG_ENABLE_FIRMWARE_DATA_LOG
