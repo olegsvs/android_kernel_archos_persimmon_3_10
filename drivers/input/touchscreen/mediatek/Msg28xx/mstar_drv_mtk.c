@@ -61,7 +61,7 @@
 /*=============================================================*/
 
 #define MSG_TP_IC_NAME "msg2xxx" //"msg21xxA" or "msg22xx" or "msg26xxM" /* Please define the mstar touch ic name based on the mutual-capacitive ic or self capacitive ic that you are using */
-#define I2C_BUS_ID   (1)       // i2c bus id : 0 or 1
+#define I2C_BUS_ID   (1)       // i2c bus id : 0 or 1 //I2C_BUS_ID
 
 #define TPD_OK (0)
 
