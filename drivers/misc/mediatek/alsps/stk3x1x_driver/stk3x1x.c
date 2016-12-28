@@ -221,7 +221,7 @@ static struct i2c_client *stk3x1x_i2c_client = NULL;
 /*----------------------------------------------------------------------------*/
 static const struct i2c_device_id stk3x1x_i2c_id[] = {{stk3x1x_DEV_NAME,0},{}};
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(3,0,0))	
-static struct i2c_board_info __initdata i2c_stk3x1x={ I2C_BOARD_INFO("stk3x1x", (0x90>>1))};
+static struct i2c_board_info __initdata i2c_stk3x1x={ I2C_BOARD_INFO("stk3x1x", 0x48)};
 #else
 /*the adapter id & i2c address will be available in customization*/
 static unsigned short stk3x1x_force[] = {0x00, 0x00, I2C_CLIENT_END, I2C_CLIENT_END};
@@ -5377,7 +5377,7 @@ static int __init stk3x1x_init(void)
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(3,0,0))	
 	struct alsps_hw *hw = stk_get_cust_alsps_hw();
 	APS_LOG("%s: i2c_number=%d\n", __func__,hw->i2c_num); 
-	i2c_register_board_info(hw->i2c_num, &i2c_stk3x1x, 1);	
+	i2c_register_board_info(hw->i2c_num, &i2c_stk3x1x, 2);	
 #endif
 	APS_FUN();
 	
