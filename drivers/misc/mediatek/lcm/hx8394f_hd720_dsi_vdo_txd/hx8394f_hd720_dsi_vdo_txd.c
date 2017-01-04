@@ -53,6 +53,10 @@
 
 #define LCM_ID                      								(0x94)
 
+#ifdef CONFIG_POCKETMOD
+#include <linux/pocket_mod.h>
+#endif
+
 #define REGFLAG_DELAY             								(0XFE)
 #define REGFLAG_END_OF_TABLE      								(0x100)	// END OF REGISTERS MARKER
 
@@ -443,6 +447,10 @@ static void lcm_suspend(void)
 	MDELAY(120);
 //	push_table(lcm_deep_sleep_mode_in_setting, sizeof(lcm_deep_sleep_mode_in_setting) / sizeof(struct LCM_setting_table), 1);	//wqtao. enable
 #endif
+// for pocket_mode
+#ifdef CONFIG_POCKETMOD
+is_screen_on = 0;
+#endif 
 }
 
 static unsigned int lcm_compare_id(void);
@@ -452,6 +460,10 @@ static void lcm_resume(void)
 #ifndef BUILD_LK
 //        lcm_compare_id();
 	lcm_init();
+#endif
+// for pocket_mode
+#ifdef CONFIG_POCKETMOD
+is_screen_on = 1;
 #endif
 }
 
