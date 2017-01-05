@@ -45,7 +45,7 @@
 #define LOG_2 LOG_INF("preview 1280*960@30fps; video 2560*1920@30fps; capture 5M@30fps\n")
 /****************************   Modify end    *******************************************/
 
-#define LOG_INF(format, args...)    xlog_printk(ANDROID_LOG_INFO   , PFX, "[%s] " format, __FUNCTION__, ##args)
+#define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
@@ -2254,7 +2254,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
                 LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
                 return ERROR_NONE;
             }
-            LOG_INF("Read sensor id fail, id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+            LOG_INF("Read sensor id fail, write id:0x%x id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
             retry--;
         } while(retry > 0);
         i++;
@@ -2305,7 +2305,7 @@ static kal_uint32 open(void)
                 LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,sensor_id);
                 break;
             }
-            LOG_INF("Read sensor id fail, id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,sensor_id);
+            LOG_INF("Read sensor id fail, write id:0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,sensor_id);
             retry--;
         } while(retry > 0);
         i++;

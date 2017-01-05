@@ -1369,6 +1369,27 @@ UINT32 GC2145Control(MSDK_SCENARIO_ID_ENUM ScenarioId, MSDK_SENSOR_EXPOSURE_WIND
 	return TRUE;
 }	/* GC2145Control() */
 
+static void GC2145_FlashTriggerCheck(unsigned int *pFeatureReturnPara32) 
+{ 
+	unsigned int analog_gain; 
+
+	GC2145_SET_PAGE0;
+	//shutter = (GC2145_read_cmos_sensor(0x03) << 8)|GC2145_read_cmos_sensor(0x04); 
+	analog_gain = GC2145_read_cmos_sensor(0x25);
+
+	SENSORDB("GC2145_FlashTriggerCheck: analog_gain=%x \n", analog_gain);
+
+	//GC2145_SET_PAGE1;
+	//shutter_limit = (GC2145_read_cmos_sensor(0x2d) << 8)|GC2145_read_cmos_sensor(0x2e); 
+	//GC2145_SET_PAGE0;
+	if(analog_gain > 0x03)//(shutter <= shutter_limit)&&
+		*pFeatureReturnPara32 = TRUE;
+	else
+		*pFeatureReturnPara32 = FALSE;
+
+	return;
+} 
+
 BOOL GC2145_set_param_wb(UINT16 para)
 {
 	switch (para)
@@ -1671,6 +1692,9 @@ UINT32 GC2145FeatureControl(MSDK_SENSOR_FEATURE_ENUM FeatureId,
 		break;
 		case SENSOR_FEATURE_SET_GAIN:
 		case SENSOR_FEATURE_SET_FLASHLIGHT:
+		break;
+		case SENSOR_FEATURE_GET_TRIGGER_FLASHLIGHT_INFO: //auto flashlight
+			GC2145_FlashTriggerCheck(pFeatureData32); 
 		break;
 		case SENSOR_FEATURE_SET_ISP_MASTER_CLOCK_FREQ:
 			GC2145_isp_master_clock=*pFeatureData32;

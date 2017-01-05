@@ -64,7 +64,7 @@ static DEFINE_SPINLOCK(GC0310_drv_lock);
 #define LOG_1 LOG_INF("GC0310,SERIAL CAM\n")
 /****************************   Modify end    *******************************************/
 
-#define SENSORDB(format, args...)    xlog_printk(ANDROID_LOG_INFO, PFX, "[%s] " format, __FUNCTION__, ##args)
+#define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
 
 #define GC0310_TEST_PATTERN_CHECKSUM (0x9db2de6e)
 
@@ -2126,13 +2126,12 @@ BOOL GC0310_set_param_exposure(UINT16 para)
     switch (para)
     {
 
-        case AE_EV_COMP_n30:
+        case AE_EV_COMP_n20:
             GC0310_write_cmos_sensor(0xfe, 0x01);
             GC0310_write_cmos_sensor(0x13, 0x20);
             GC0310_write_cmos_sensor(0xfe, 0x00);
         break;
 
-        case AE_EV_COMP_n20:
         case AE_EV_COMP_n10:
             GC0310_write_cmos_sensor(0xfe, 0x01);
             GC0310_write_cmos_sensor(0x13, 0x28);  // 28 to 10
@@ -2145,15 +2144,15 @@ BOOL GC0310_set_param_exposure(UINT16 para)
             GC0310_write_cmos_sensor(0xfe, 0x00);
         break;
 
+        case AE_EV_COMP_15:
         case AE_EV_COMP_10:
-        case AE_EV_COMP_20:
             GC0310_write_cmos_sensor(0xfe, 0x01);
             GC0310_write_cmos_sensor(0x13, 0x48);  // 48 to 60
             GC0310_write_cmos_sensor(0xfe, 0x00);
             Sleep(200);
         break;
 
-        case AE_EV_COMP_30:
+        case AE_EV_COMP_20:
             GC0310_write_cmos_sensor(0xfe, 0x01);
             GC0310_write_cmos_sensor(0x13, 0x50);
             GC0310_write_cmos_sensor(0xfe, 0x00);

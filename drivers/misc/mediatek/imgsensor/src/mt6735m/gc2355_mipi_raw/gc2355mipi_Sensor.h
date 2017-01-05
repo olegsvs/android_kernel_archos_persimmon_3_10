@@ -125,16 +125,17 @@ typedef struct imgsensor_info_struct {
 #define GC2355_INTERNAL_DUMMY_PIXEL_NUMS  36
 #define GC2355_INTERNAL_DUMMY_LINE_NUMS   32
 
-#define GC2355_VIDEO_PERIOD_PIXEL_NUMS          (1120)
-#define GC2355_VIDEO_PERIOD_LINE_NUMS           (1246)
-#define GC2355_PV_PERIOD_PIXEL_NUMS            (1120)
-#define GC2355_PV_PERIOD_LINE_NUMS             (1246)
+#define GC2355_VIDEO_PERIOD_PIXEL_NUMS          (1680)
+#define GC2355_VIDEO_PERIOD_LINE_NUMS           (1250)
+#define GC2355_PV_PERIOD_PIXEL_NUMS            (1680)
+#define GC2355_PV_PERIOD_LINE_NUMS             (1250)
 
-#define GC2355_FULL_PERIOD_PIXEL_NUMS          (1120)
-#define GC2355_FULL_PERIOD_LINE_NUMS           (1246)
+#define GC2355_FULL_PERIOD_PIXEL_NUMS          (1680)
+#define GC2355_FULL_PERIOD_LINE_NUMS           (1250)
 
 
 // end
+
 extern int iReadRegI2C(u8 *a_pSendData , u16 a_sizeSendData, u8 * a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
 extern int iWriteRegI2C(u8 *a_pSendData , u16 a_sizeSendData, u16 i2cId);
 extern int iWriteReg(u16 a_u2Addr , u32 a_u4Data , u32 a_u4Bytes , u16 i2cId); 

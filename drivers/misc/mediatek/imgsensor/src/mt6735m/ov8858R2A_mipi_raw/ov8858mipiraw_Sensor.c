@@ -67,7 +67,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width  = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 23,
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,	
 	},
@@ -79,7 +79,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 0,
 		.grabwindow_width  = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 23,
 		.max_framerate = 300,
 	},
 	.cap1 = {							//capture for PIP 24fps relative information, capture1 mode must use same framelength, linelength with Capture mode for shutter calculate
@@ -90,7 +90,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 0,
 		.grabwindow_width  = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 23,
 		.max_framerate = 150,
 	},
 	.normal_video = {
@@ -101,7 +101,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 0,
 		.grabwindow_width  = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 23,
 		.max_framerate = 300,
 	},
 	.hs_video = {
@@ -113,7 +113,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width  = 640,		//record different mode's width of grabwindow
 		.grabwindow_height = 480,		//record different mode's height of grabwindow
 		/*	 following for  MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 30,
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 1200,
 	},
@@ -126,7 +126,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width  = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 43,
+		.mipi_data_lp2hs_settle_dc = 30,
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,	
 
@@ -149,7 +149,7 @@ static imgsensor_info_struct imgsensor_info = {
 	
 	.isp_driving_current = ISP_DRIVING_8MA, //mclk driving current
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,//sensor_interface_type
-#if defined(CONFIG_T89G_TX_PROJ) || defined(CONFIG_T89J_JK_PROJ)|| defined(CONFIG_T875_PROJ) || defined(CONFIG_T87_PROJ) || defined(CONFIG_T823T_HS_PROJ)
+#if defined(CONFIG_T89G_TX_PROJ) || defined(CONFIG_T89J_JK_PROJ) || defined(CONFIG_T89N_TS_PROJ)
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,//sensor output first pixel color
 #else
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gb,//sensor output first pixel color
@@ -161,8 +161,8 @@ static imgsensor_info_struct imgsensor_info = {
 
 
 static imgsensor_struct imgsensor = {
-#if defined(CONFIG_T89G_TX_PROJ) || defined(CONFIG_T89J_JK_PROJ)|| defined(CONFIG_T875_PROJ) || defined(CONFIG_T87_PROJ) || defined(CONFIG_T823T_HS_PROJ)
-	.mirror = IMAGE_NORMAL,		//mirrorflip information
+#if defined(CONFIG_T89G_TX_PROJ) || defined(CONFIG_T89J_JK_PROJ) || defined(CONFIG_T89N_TS_PROJ)
+	.mirror = IMAGE_NORMAL,				//mirrorflip information
 #else
 	.mirror = IMAGE_HV_MIRROR,				//mirrorflip information
 #endif

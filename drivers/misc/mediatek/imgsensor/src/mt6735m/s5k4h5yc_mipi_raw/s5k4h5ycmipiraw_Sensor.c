@@ -55,10 +55,10 @@ static imgsensor_info_struct imgsensor_info = {
 		.framelength = 2512,
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 1600,		//record different mode's width of grabwindow
-		.grabwindow_height = 1200,		//record different mode's height of grabwindow
+		.grabwindow_width = 1632,		//record different mode's width of grabwindow
+		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,
+		.mipi_data_lp2hs_settle_dc = 14,
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,	
 	},
@@ -68,9 +68,9 @@ static imgsensor_info_struct imgsensor_info = {
 		.framelength = 2512,
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 3280,
-		.grabwindow_height = 2464,
-		.mipi_data_lp2hs_settle_dc = 65,
+		.grabwindow_width = 3264,//3200,
+		.grabwindow_height = 2448,//2400,
+		.mipi_data_lp2hs_settle_dc = 14,
 		.max_framerate = 300,
 	},
 	.cap1 = {
@@ -79,9 +79,9 @@ static imgsensor_info_struct imgsensor_info = {
 		.framelength = 2530,
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 3280,
-		.grabwindow_height = 2464,
-		.mipi_data_lp2hs_settle_dc = 65,
+		.grabwindow_width = 3264,
+		.grabwindow_height = 2448,
+		.mipi_data_lp2hs_settle_dc = 14,
 		.max_framerate = 150,
 	},
 	.normal_video = {
@@ -90,9 +90,9 @@ static imgsensor_info_struct imgsensor_info = {
 		.framelength = 2512,
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 3200,
-		.grabwindow_height = 2400,
-		.mipi_data_lp2hs_settle_dc = 65,
+		.grabwindow_width = 3264,
+		.grabwindow_height = 2448,
+		.mipi_data_lp2hs_settle_dc = 14,
 		.max_framerate = 300,
 	},
 	.hs_video = {
@@ -103,7 +103,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 0,
 		.grabwindow_width = 820,
 		.grabwindow_height = 616,
-		.mipi_data_lp2hs_settle_dc = 65,
+		.mipi_data_lp2hs_settle_dc = 14,
 		.max_framerate = 1200,
 	},
 	.slim_video = {
@@ -116,7 +116,7 @@ static imgsensor_info_struct imgsensor_info = {
 		//.grabwindow_height = 1200,		//record different mode's height of grabwindow
 		.grabwindow_width = 1280,
 		.grabwindow_height = 720,
-		.mipi_data_lp2hs_settle_dc = 65,
+		.mipi_data_lp2hs_settle_dc = 14,
 		.max_framerate = 300,
 	},
 	.margin = 16,
@@ -138,7 +138,7 @@ static imgsensor_info_struct imgsensor_info = {
 	.isp_driving_current = ISP_DRIVING_8MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
     .mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
-    .mipi_settle_delay_mode = 1,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
+    .mipi_settle_delay_mode = MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr,
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,
@@ -440,7 +440,6 @@ static void sensor_init(void)
 static void preview_setting(void)
 { 
 		write_cmos_sensor(0x0100,0x00);
-		mdelay(60);
 		write_cmos_sensor(0x0101,0x00);
 		write_cmos_sensor(0x0204,0x00);
 		write_cmos_sensor(0x0205,0x20);
@@ -494,7 +493,7 @@ static void preview_setting(void)
 		write_cmos_sensor(0x3500,0x0C);
 		write_cmos_sensor(0x3C1A,0xA8);
 		write_cmos_sensor(0x3B29,0x01);//Caval 140613
-		write_cmos_sensor(0x3300,0x01);//Caval 140613			//20150309
+		write_cmos_sensor(0x3300,0x01);//Caval 140613	,20150526,01:lsc off		//20150309
 		write_cmos_sensor(0x3000,0x07);
 		write_cmos_sensor(0x3001,0x05);
 		write_cmos_sensor(0x3002,0x03);
@@ -566,9 +565,7 @@ static void preview_setting(void)
 		write_cmos_sensor(0x3216,0x21);
 		write_cmos_sensor(0x3217,0x02);
 		write_cmos_sensor(0x3218,0x21);
-		mdelay(60);
 		write_cmos_sensor(0x0100,0x01);
-		mdelay(60);
 	}   /*  S5K4H5YCMIPI_Capture_Setting  */
 
 static void capture_setting(kal_uint16 currefps)
@@ -576,7 +573,6 @@ static void capture_setting(kal_uint16 currefps)
     if (currefps == 150) 
 	{
 			write_cmos_sensor(0x0100, 0x00);
-			mdelay(50);
 			write_cmos_sensor(0x0101, 0x00);
 			write_cmos_sensor(0x0204, 0x00);
 			write_cmos_sensor(0x0205, 0x20);
@@ -698,14 +694,11 @@ static void capture_setting(kal_uint16 currefps)
 			write_cmos_sensor(0x3216, 0x21);
 			write_cmos_sensor(0x3217, 0x02);
 			write_cmos_sensor(0x3218, 0x21);
-			mdelay(60);
 			write_cmos_sensor(0x0100, 0x01);
-			mdelay(60);
 	}
 	else
 	{ 
 		write_cmos_sensor(0x0100,0x00);
-		mdelay(60);
 		write_cmos_sensor(0x0101,0x00);
 		write_cmos_sensor(0x0204,0x00);
 		write_cmos_sensor(0x0205,0x20);
@@ -883,15 +876,12 @@ static void capture_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3216,0x21);    // adc_offset_ms_even1 (LSB) 				   
 	write_cmos_sensor(0x3217,0x02);    // adc_offset_ms_odd1 (MSB)					   
 	write_cmos_sensor(0x3218,0x21);    // adc_offset_ms_odd1 (LSB)
-    mdelay(60);
 		write_cmos_sensor(0x0100,0x01);
-	mdelay(60);
 	}
 }
 static void normal_video_setting(kal_uint16 currefps)
 	{ 
 			LOG_INF("E! currefps:%d\n",currefps);
-			mdelay(50);
 			write_cmos_sensor(0x0100,0x00);
 			write_cmos_sensor(0x0101,0x00);
 			write_cmos_sensor(0x0204,0x00);
@@ -940,7 +930,7 @@ static void normal_video_setting(kal_uint16 currefps)
 		write_cmos_sensor(0x3500,0x0C);
 		write_cmos_sensor(0x3C1A,0xA8);
 	write_cmos_sensor(0x3B29,0x01); 	 // OTP enable
-		write_cmos_sensor(0x3300,0x01);//Caval 140613			//20150309	
+		write_cmos_sensor(0x3300,0x01);//Caval 140613		20150526,01:lsc off	//20150309	
 		write_cmos_sensor(0x3000,0x07);
 		write_cmos_sensor(0x3001,0x05);
 		write_cmos_sensor(0x3002,0x03);
@@ -1012,9 +1002,7 @@ static void normal_video_setting(kal_uint16 currefps)
 		write_cmos_sensor(0x3216,0x21);
 		write_cmos_sensor(0x3217,0x02);
 		write_cmos_sensor(0x3218,0x21);
-		mdelay(50);
 			write_cmos_sensor(0x0100,0x01);
-			mdelay(60);
 		}
 static void hs_video_setting() 
 {              LOG_INF("E//VGA 120fps");
@@ -1032,7 +1020,6 @@ static void hs_video_setting()
 			//$MIPI[Width:820,Height:616,Format:Raw10,Lane:4,ErrorCheck:0,PolarityData:0,PolarityClock:0,Buffer:4]
 
 			write_cmos_sensor(0x0100,0x00);       //Stream Off	[0]mode_select                                        
-			mdelay(50);
 			write_cmos_sensor(0x0101,0x00);       //Image  orientation	image_orientation ([0] mirror en, [1] flip en)
 			                       
 			write_cmos_sensor(0x0204,0x00);       //Analog Gain	analogue_gain_code_global H                         
@@ -1177,9 +1164,8 @@ static void hs_video_setting()
 			write_cmos_sensor(0x3216,0x21);
 			write_cmos_sensor(0x3217,0x02);
 			write_cmos_sensor(0x3218,0x21);
-			 mdelay(50);                 
+			                  
 			write_cmos_sensor(0x0100,0x01);
-			mdelay(60);
 	}
 
 static void slim_video_setting()
@@ -1203,7 +1189,7 @@ static void slim_video_setting()
 		
 		// Streaming off -----------------------------------
 		write_cmos_sensor(0x0100,0x00); 	//	[0] mode_select
-		mdelay(50);
+		
 		//Image  Orientation -------------------------------
 		write_cmos_sensor(0x0101,0x00); 	//	[1:0]	image_orientation ([0] mirror en, [1] flip en)
 		
@@ -1355,11 +1341,10 @@ static void slim_video_setting()
 		write_cmos_sensor(0x3217,0x02);    // adc_offset_ms_odd1 (MSB)					   
 		write_cmos_sensor(0x3218,0x21);    // adc_offset_ms_odd1 (LSB)
 		write_cmos_sensor(0x3B29,0x01); 	 // OTP enable
-		mdelay(50);
+		
 		
 		//Straming On -----------------------------------
 		write_cmos_sensor(0x0100,0x01);    // Streaming On
-		mdelay(60);
 		
 		}
 
@@ -1404,7 +1389,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	if (*sensor_id != imgsensor_info.sensor_id) {
 		// if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF 
 		*sensor_id = 0xFFFFFFFF;
-		return ERROR_SENSOR_CONNECT_FAIL;
+		return ERROR_NONE;
 	}
 	return ERROR_NONE;
 }
@@ -1433,7 +1418,7 @@ static kal_uint32 open(void)
 	kal_uint8 i = 0;
 	kal_uint8 retry = 1;
 	kal_uint16 sensor_id = 0; 
-	LOG_INF("PLATFORM:MT6595,MIPI 2LANE\n");
+	LOG_INF("PLATFORM:MT6735,MIPI 4LANE\n");
 	LOG_INF("preview 1280*960@30fps,864Mbps/lane; video 1280*960@30fps,864Mbps/lane; capture 5M@30fps,864Mbps/lane\n");
 	
 	//sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address
@@ -1444,7 +1429,7 @@ static kal_uint32 open(void)
 		do {
 			sensor_id = ((read_cmos_sensor(0x0000) << 8) | read_cmos_sensor(0x0001));
 			if (sensor_id == imgsensor_info.sensor_id) {				
-				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x,0x%x\n", imgsensor.i2c_write_id,sensor_id);	  
+				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,sensor_id);	  
 				break;
 			}	
 			LOG_INF("Read sensor id fail, id: 0x%x,0x%x\n", imgsensor.i2c_write_id,sensor_id);

@@ -44,11 +44,6 @@
 //#define LOG_DBG(format, args...) xlog_printk(ANDROID_LOG_DEBUG ,PFX, "[%S] " format, __FUNCTION__, ##args)
 #define LOG_INF(format, args...)	xlog_printk(ANDROID_LOG_INFO   , PFX, "[%s] " format, __FUNCTION__, ##args)
 
-
-#ifdef CONFIG_T925H_KW_PROJ
-#define OV8865_AWB_OTP_SUPPORT
-#endif
-
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 static imgsensor_info_struct imgsensor_info = { 
@@ -148,14 +143,18 @@ static imgsensor_info_struct imgsensor_info = {
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,
-	.i2c_addr_table = {0x6C,0x42,0xff},
+	.i2c_addr_table = {0x20,0x6c,0xff},
 };
 
 
 
 
 static imgsensor_struct imgsensor = {
-	.mirror = IMAGE_NORMAL,				//mirrorflip information
+#ifdef VANZO_IMGSENSOR_OV8865_ROTATION
+	.mirror = IMAGE_HV_MIRROR,//IMAGE_HV_MIRROR,				//mirrorflip information
+#else
+	.mirror = IMAGE_NORMAL,//IMAGE_HV_MIRROR,				//mirrorflip information
+#endif
 	.sensor_mode = IMGSENSOR_MODE_INIT, //IMGSENSOR_MODE enum value,record current sensor mode,such as: INIT, Preview, Capture, Video,High Speed Video, Slim Video
 	.shutter = 0x3D0,					//current shutter
 	.gain = 0x100,						//current gain
@@ -166,7 +165,7 @@ static imgsensor_struct imgsensor = {
 	.test_pattern = KAL_FALSE,		//test pattern mode or not. 
 	.current_scenario_id = MSDK_SCENARIO_ID_CAMERA_PREVIEW,//current scenario id
 	.ihdr_en = 0, //sensor need support LE, SE with HDR feature
-	.i2c_write_id = 0x6C,
+	.i2c_write_id = 0x20,
 };
 
 
@@ -382,7 +381,7 @@ static void ihdr_write_shutter_gain(kal_uint16 le, kal_uint16 se, kal_uint16 gai
 }
 
 
-#if 0
+#if 1
 static void set_mirror_flip(kal_uint8 image_mirror)
 {
 
@@ -390,10 +389,10 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 
 	LOG_INF("image_mirror = %d\n", image_mirror);
 	
-	mirror= OV8865_read_cmos_sensor(0x3820);
-	flip  = OV8865_read_cmos_sensor(0x3821);
+	mirror= read_cmos_sensor(0x3820);
+	flip  = read_cmos_sensor(0x3821);
 
-    switch (imgMirror)
+    switch (image_mirror)
     {
         case IMAGE_H_MIRROR://IMAGE_NORMAL:
             write_cmos_sensor(0x3820, (mirror & (0xF9)));//Set normal
@@ -1624,224 +1623,6 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	return ERROR_NONE;
 }
 
-#ifdef OV8865_AWB_OTP_SUPPORT
-struct otp_struct {
-int flag; // bit[7]: info, bit[6]:wb, bit[5]:vcm, bit[4]:lenc
-int module_integrator_id;
-int lens_id;
-int production_year;
-int production_month;
-int production_day;
-int rg_ratio;
-int bg_ratio;
-int light_rg;
-int light_bg;
-int lenc[62];
-int VCM_start;
-int VCM_end;
-int VCM_dir;
-};
-
-static struct otp_struct otp_ptr;
-
-/*Camera driver need to load AWB calibration data and lens correction setting stored in OTP and
-write to gain registers after initialization of register settings. After lens correction applied, the
-output of every camera module is same or very close to output of typical camera .*/
-// return value:
-// bit[7]: 0 no otp info, 1 valid otp info
-// bit[6]: 0 no otp wb, 1 valib otp wb
-// bit[5]: 0 no otp vcm, 1 valid otp vcm
-// bit[4]: 0 no otp lenc, 1 valid otp lenc
-int read_otp(struct otp_struct *otp_ptr)
-{
-int otp_flag, addr, temp, i;
-//set 0x5002 to 0x00
-write_cmos_sensor(0x5002, 0x00); // disable OTP_DPC
-// read OTP into buffer
-write_cmos_sensor(0x3d84, 0xC0);
-write_cmos_sensor(0x3d88, 0x70); // OTP start address
-write_cmos_sensor(0x3d89, 0x10);
-write_cmos_sensor(0x3d8A, 0x70); // OTP end address
-write_cmos_sensor(0x3d8B, 0xf4);
-write_cmos_sensor(0x3d81, 0x01); // load otp into buffer
-mdelay(10);
-// OTP base information
-otp_flag = read_cmos_sensor(0x7010);
-addr = 0;
-if((otp_flag & 0xc0) == 0x40) {
-addr = 0x7011; // base address of info group 1
-}
-else if((otp_flag & 0x30) == 0x10) {
-addr = 0x7016; // base address of info group 2
-}
-else if((otp_flag & 0x0c) == 0x04) {
-addr = 0x701b; // base address of info group 3
-}
-if(addr != 0) {
-(*otp_ptr).flag = 0x80; // valid info in OTP
-(*otp_ptr).module_integrator_id = read_cmos_sensor(addr);
-(*otp_ptr).lens_id = read_cmos_sensor( addr + 1);
-(*otp_ptr).production_year = read_cmos_sensor( addr + 2);
-(*otp_ptr).production_month = read_cmos_sensor( addr + 3);
-(*otp_ptr).production_day = read_cmos_sensor(addr + 4);
-}
-else {
-(*otp_ptr).flag = 0x00; // not info in OTP
-(*otp_ptr).module_integrator_id = 0;
-(*otp_ptr).lens_id = 0;
-(*otp_ptr).production_year = 0;
-(*otp_ptr).production_month = 0;
-(*otp_ptr).production_day = 0;
-}
-//OV8865 Calibration and OTP Programming Guide
-// OTP WB Calibration
-otp_flag = read_cmos_sensor(0x7020);
-addr = 0;
-if((otp_flag & 0xc0) == 0x40) {
-addr = 0x7021; // base address of WB Calibration group 1
-}
-else if((otp_flag & 0x30) == 0x10) {
-addr = 0x7026; // base address of WB Calibration group 2
-}
-else if((otp_flag & 0x0c) == 0x04) {
-addr = 0x702b; // base address of WB Calibration group 3
-}
-if(addr != 0) {
-(*otp_ptr).flag |= 0x40;
-temp = read_cmos_sensor(addr + 4);
-(*otp_ptr).rg_ratio = (read_cmos_sensor(addr)<<2) + ((temp>>6) & 0x03);
-(*otp_ptr).bg_ratio = (read_cmos_sensor(addr + 1)<<2) + ((temp>>4) & 0x03);
-(*otp_ptr).light_rg = (read_cmos_sensor(addr + 2)<<2) + ((temp>>2) & 0x03);
-(*otp_ptr).light_bg = (read_cmos_sensor(addr + 3)<<2) + (temp & 0x03);
-}
-else {
-(*otp_ptr).rg_ratio = 0;
-(*otp_ptr).bg_ratio = 0;
-(*otp_ptr).light_rg = 0;
-(*otp_ptr).light_bg = 0;
-}
-// OTP VCM Calibration
-otp_flag = read_cmos_sensor(0x7030);
-addr = 0;
-if((otp_flag & 0xc0) == 0x40) {
-addr = 0x7031; // base address of VCM Calibration group 1
-}
-else if((otp_flag & 0x30) == 0x10) {
-addr = 0x7034; // base address of VCM Calibration group 2
-}
-else if((otp_flag & 0x0c) == 0x04) {
-addr = 0x7037; // base address of VCM Calibration group 3
-}
-if(addr != 0) {
-(*otp_ptr).flag |= 0x20;
-temp = read_cmos_sensor(addr + 2);
-(* otp_ptr).VCM_start = (read_cmos_sensor(addr)<<2) | ((temp>>6) & 0x03);
-(* otp_ptr).VCM_end = (read_cmos_sensor(addr + 1) << 2) | ((temp>>4) & 0x03);
-(* otp_ptr).VCM_dir = (temp>>2) & 0x03;
-}
-else {
-(* otp_ptr).VCM_start = 0;
-(* otp_ptr).VCM_end = 0;
-(* otp_ptr).VCM_dir = 0;
-}
-// OTP Lenc Calibration
-otp_flag = read_cmos_sensor(0x703a);
-addr = 0;
-if((otp_flag & 0xc0) == 0x40) {
-addr = 0x703b; // base address of Lenc Calibration group 1
-}
-else if((otp_flag & 0x30) == 0x10) {
-addr = 0x7079; // base address of Lenc Calibration group 2
-}
-else if((otp_flag & 0x0c) == 0x04) {
-addr = 0x70b7; // base address of Lenc Calibration group 3
-}
-if(addr != 0) {
-(*otp_ptr).flag |= 0x10;
-for(i=0;i<62;i++) {
-(* otp_ptr).lenc[i]=read_cmos_sensor(addr + i);
-}
-}
-else {
-for(i=0;i<62;i++) {
-(* otp_ptr).lenc[i]=0;
-}
-}
-for(i=0x7010;i<=0x70f4;i++) {
-write_cmos_sensor(i,0); // clear OTP buffer, recommended use continuous write to accelarate
-}
-//set 0x5002 to 0x08
-write_cmos_sensor(0x5002, 0x08); // enable OTP_DPC
-return (*otp_ptr).flag;
-}
-
-
-// return value:
-// bit[7]: 0 no otp info, 1 valid otp info
-// bit[6]: 0 no otp wb, 1 valib otp wb
-// bit[5]: 0 no otp vcm, 1 valid otp vcm
-// bit[4]: 0 no otp lenc, 1 valid otp lenc
-int apply_otp(struct otp_struct *otp_ptr)
-{
-int rg, bg, R_gain, G_gain, B_gain, Base_gain, temp, i;
-int BG_Ratio_Typical = 0x127;
-int RG_Ratio_Typical = 0x111;
-
-// apply OTP WB Calibration
-if ((*otp_ptr).flag & 0x40) {
-rg = (*otp_ptr).rg_ratio;
-bg = (*otp_ptr).bg_ratio;
-//calculate G gain
-R_gain = (RG_Ratio_Typical*1000) / rg;
-B_gain = (BG_Ratio_Typical*1000) / bg;
-G_gain = 1000;
-if (R_gain < 1000 || B_gain < 1000)
-{
-if (R_gain < B_gain)
-Base_gain = R_gain;
-else
-Base_gain = B_gain;
-}
-else
-{
-Base_gain = G_gain;
-}
-R_gain = 0x400 * R_gain / (Base_gain);
-B_gain = 0x400 * B_gain / (Base_gain);
-G_gain = 0x400 * G_gain / (Base_gain);
-// update sensor WB gain
-if (R_gain>0x400) {
-write_cmos_sensor(0x5018, R_gain>>6);
-write_cmos_sensor(0x5019, R_gain & 0x003f);
-}
-if (G_gain>0x400) {
-write_cmos_sensor(0x501A, G_gain>>6);
-write_cmos_sensor(0x501B, G_gain & 0x003f);
-}
-if (B_gain>0x400) {
-write_cmos_sensor(0x501C, B_gain>>6);
-write_cmos_sensor(0x501D, B_gain & 0x003f);
-}
-}
-// apply OTP Lenc Calibration
-if ((*otp_ptr).flag & 0x10) {
-temp = read_cmos_sensor(0x5000);
-temp = 0x80 | temp;
-write_cmos_sensor(0x5000, temp);
-for(i=0;i<62;i++) {
-write_cmos_sensor(0x5800 + i, (*otp_ptr).lenc[i]);
-}
-}
-return (*otp_ptr).flag;
-}
-
-
-#endif
-
-
-
-
-
 
 /*************************************************************************
 * FUNCTION
@@ -1896,14 +1677,6 @@ static kal_uint32 open(void)
 	
 	/* initail sequence write in  */
 	sensor_init();
-#ifdef OV8865_AWB_OTP_SUPPORT
-//在这里调用pdf上的两个函数就行了，
-//函数的实现，结构体的定义，在pdf里都有，请自行添加
-///////////////////////////////////////////////////////////////////////////
-	read_otp(&otp_ptr);
-	apply_otp(&otp_ptr);
-//////////////////////////////////////////////////////////////////////////
-#endif
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.autoflicker_en= KAL_FALSE;
@@ -1921,15 +1694,6 @@ static kal_uint32 open(void)
 	imgsensor.test_pattern = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 
-#ifdef CONFIG_HCT_AF_POWER_ON_NOISE
-         //AF_VCC
-        if(TRUE != hwPowerOn(CAMERA_POWER_VCAM_AF, VOL_2800,"ov8865_sensor"))
-        {
-             LOG_INF("s5k3h7_sensor af poweron failed: \n");
-        }
-    
-                mdelay(5);
-#endif
 	return ERROR_NONE;
 }	/*	open  */
 
@@ -1954,13 +1718,7 @@ static kal_uint32 open(void)
 static kal_uint32 close(void)
 {
 	LOG_INF("E\n");
-#ifdef CONFIG_HCT_AF_POWER_ON_NOISE
-        if(TRUE != hwPowerDown(CAMERA_POWER_VCAM_AF, "ov8865_sensor"))
-        {
-             LOG_INF("down s5k3h7_sensor af powerdown failed: \n");
-        }
-        
-#endif
+
 	/*No Need to implement this function*/ 
 	
 	return ERROR_NONE;
@@ -1999,7 +1757,7 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	preview_setting();
-
+    set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/*	preview   */
 
@@ -2050,7 +1808,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 		mdelay(40);
 		
 	}
-
+    set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/* capture() */
 static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
@@ -2068,7 +1826,7 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
-	
+	set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/*	normal_video   */
 
@@ -2090,7 +1848,7 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	hs_video_setting();
-	
+	set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/*	hs_video   */
 
@@ -2111,7 +1869,7 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
-	
+	set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/*	slim_video	 */
 

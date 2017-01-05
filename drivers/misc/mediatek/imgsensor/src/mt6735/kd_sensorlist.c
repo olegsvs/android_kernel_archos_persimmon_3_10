@@ -39,16 +39,7 @@
 #include <linux/compat.h>
 #endif
 
-#ifdef CONFIG_HCT_DEVICE_INFO_SUPPORT
-//#include "hct_devices.h"
-extern int hct_set_camera_device_used(char * module_name, int pdata);
-typedef enum 
-{ 
-    DEVICE_SUPPORTED = 0,        
-    DEVICE_USED = 1,
-}campatible_type;
-
-#endif
+#include <mach/mt_chip.h>
 
 /* Camera information */
 #define PROC_CAMERA_INFO "driver/camera_info"
@@ -87,21 +78,21 @@ static struct i2c_board_info i2c_devs2 __initdata = {I2C_BOARD_INFO(CAMERA_HW_DR
 ******************************************************************************/
 #define PFX "[kd_sensorlist]"
 #define PK_DBG_NONE(fmt, arg...)    do {} while (0)
-#define PK_DBG_FUNC(fmt, arg...)    xlog_printk(ANDROID_LOG_INFO , PFX, fmt, ##arg)
-#define PK_INF(fmt, args...)     xlog_printk(ANDROID_LOG_INFO  , PFX, "[%s] " fmt, __func__, ##args)
+#define PK_DBG_FUNC(fmt, arg...)    pr_debug(fmt, ##arg)
+#define PK_INF(fmt, args...)     pr_debug(PFX "[%s] " fmt, __FUNCTION__, ##args)
 
 #undef DEBUG_CAMERA_HW_K
 /* #define DEBUG_CAMERA_HW_K */
 #ifdef DEBUG_CAMERA_HW_K
 #define PK_DBG PK_DBG_FUNC
-#define PK_ERR(fmt, arg...)         xlog_printk(ANDROID_LOG_ERROR , PFX , fmt, ##arg)
+#define PK_ERR(fmt, arg...)         pr_err(fmt, ##arg)
 #define PK_XLOG_INFO(fmt, args...) \
         do {    \
-            xlog_printk(ANDROID_LOG_DEBUG, PFX, fmt, ##args); \
+            pr_debug(fmt, ##args); \
         } while (0)
 #else
 #define PK_DBG(a, ...)
-#define PK_ERR(fmt, arg...)             xlog_printk(ANDROID_LOG_ERROR , PFX , fmt, ##arg)
+#define PK_ERR(fmt, arg...)             pr_err(fmt, ##arg)
 #define PK_XLOG_INFO(fmt, args...)
 
 #endif
@@ -185,8 +176,7 @@ static u32 gI2CBusNum = SUPPORT_I2C_BUS_NUM1;
 static DEFINE_MUTEX(kdCam_Mutex);
 static BOOL bSesnorVsyncFlag = FALSE;
 static ACDK_KD_SENSOR_SYNC_STRUCT g_NewSensorExpGain = {128, 128, 128, 128, 1000, 640, 0xFF, 0xFF, 0xFF, 0};
-char g_MainSensorName[32] = KDIMGSENSOR_NOSENSOR;
-char g_SubSensorName[32] = KDIMGSENSOR_NOSENSOR;
+
 
 extern MULTI_SENSOR_FUNCTION_STRUCT2 kd_MultiSensorFunc;
 static MULTI_SENSOR_FUNCTION_STRUCT2 *g_pSensorFunc = &kd_MultiSensorFunc;
@@ -1130,7 +1120,7 @@ int kdSetDriver(unsigned int *pDrvIndex)
         memcpy((char *)g_invokeSensorNameStr[i], (char *)pSensorList[drvIdx[i]].drvname, sizeof(pSensorList[drvIdx[i]].drvname));
         /* return sensor ID */
         /* pDrvIndex[0] = (unsigned int)pSensorList[drvIdx].SensorId; */
-        PK_INF("[%d][%d][%d][%s][%d]\n", i, g_bEnableDriver[i], g_invokeSocketIdx[i], g_invokeSensorNameStr[i], sizeof(pSensorList[drvIdx[i]].drvname));
+        PK_INF("[%d][%d][%d][%s]\n", i, g_bEnableDriver[i], g_invokeSocketIdx[i], g_invokeSensorNameStr[i]);
     }
     }
     return 0;
@@ -1372,7 +1362,7 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
     UINT32 i = 0;
     MUINT32 sensorID = 0;
     MUINT32 retLen = 0;
-
+#ifndef CONFIG_MTK_FPGA
     KD_IMGSENSOR_PROFILE_INIT();
     /* power on sensor */
     kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, true, CAMERA_HW_DRVNAME1);
@@ -1406,24 +1396,7 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
 
             PK_INF(" Sensor found ID = 0x%x\n", sensorID);
             snprintf(mtk_ccm_name,sizeof(mtk_ccm_name),"%s CAM[%d]:%s;",mtk_ccm_name,g_invokeSocketIdx[i],g_invokeSensorNameStr[i]);
-            #ifdef CONFIG_HCT_DEVICE_INFO_SUPPORT
-            hct_set_camera_device_used(g_invokeSensorNameStr[i], (int)g_invokeSocketIdx[i]);
-            #endif
             err = ERROR_NONE;
-					if (DUAL_CAMERA_MAIN_SENSOR == g_invokeSocketIdx[i])
-					{
-						if(0==strcmp(g_MainSensorName,KDIMGSENSOR_NOSENSOR))
-						{
-							memcpy((char*)g_MainSensorName,(char*)g_invokeSensorNameStr[i],sizeof(g_invokeSensorNameStr[i]));  
-						}
-					}
-					else
-					{
-						if(0==strcmp(g_SubSensorName,KDIMGSENSOR_NOSENSOR))
-						{
-							memcpy((char*)g_SubSensorName,(char*)g_invokeSensorNameStr[i],sizeof(g_invokeSensorNameStr[i]));  
-						}
-					}
         }
         if (ERROR_NONE != err)
         {
@@ -1445,7 +1418,9 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
     kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, false, CAMERA_HW_DRVNAME1);
     /*  */
     KD_IMGSENSOR_PROFILE("CheckIsAlive");
-
+#else
+    err = ERROR_SENSOR_CONNECT_FAIL;
+#endif
     g_IsSearchSensor = 0;
 
     return err ?  -EIO:err;
@@ -1900,7 +1875,6 @@ inline static int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
     case SENSOR_FEATURE_GET_PDAF_INFO:
     case SENSOR_FEATURE_GET_PDAF_DATA:
     case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
-	case SENSOR_FEATURE_SET_ISO:
         /*  */
         if (copy_from_user((void *)pFeaturePara , (void *) pFeatureCtrl->pFeaturePara, FeatureParaLen)) {
         kfree(pFeaturePara);
@@ -2066,7 +2040,6 @@ inline static int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
     case SENSOR_FEATURE_SET_MIN_MAX_FPS:
     case SENSOR_FEATURE_GET_PDAF_INFO:
     case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
-	case SENSOR_FEATURE_SET_ISO:
         /*  */
         if (copy_to_user((void __user *) pFeatureCtrl->pFeaturePara, (void *)pFeaturePara , FeatureParaLen)) {
         kfree(pFeaturePara);
@@ -2144,6 +2117,7 @@ inline static int kdSetSensorMclk(int *pBuf)
     ACDK_SENSOR_MCLK_STRUCT *pSensorCtrl = (ACDK_SENSOR_MCLK_STRUCT *)pBuf;
 
     PK_DBG("[CAMERA SENSOR] kdSetSensorMclk on=%d, freq= %d\n", pSensorCtrl->on, pSensorCtrl->freq);
+#ifndef CONFIG_MTK_FPGA
     if (1 == pSensorCtrl->on) {
     enable_mux(MT_MUX_CAMTG, "CAMERA_SENSOR");
     clkmux_sel(MT_MUX_CAMTG, pSensorCtrl->freq, "CAMERA_SENSOR");
@@ -2152,6 +2126,7 @@ inline static int kdSetSensorMclk(int *pBuf)
 
     disable_mux(MT_MUX_CAMTG, "CAMERA_SENSOR");
     }
+#endif
     return ret;
 /* #endif */
 }
@@ -2737,6 +2712,18 @@ CAMERA_HW_Ioctl_EXIT:
 ********************************************************************************/
 static int CAMERA_HW_Open(struct inode *a_pstInode, struct file *a_pstFile)
 {
+
+	unsigned int code = mt_get_chip_hw_code();
+	if (0x321 == code) {
+	     PK_INF("<hip: d1\n");
+	} else if (0x335 == code) {
+	     PK_INF("<hip: d2\n");
+	} else if (0x337 == code){
+	     PK_INF("<hip: d3\n");
+	} else {
+	     PK_INF("<hip: unknown\n");
+	}
+
     /* reset once in multi-open */
     if (atomic_read(&g_CamDrvOpenCnt) == 0) {
     /* default OFF state */

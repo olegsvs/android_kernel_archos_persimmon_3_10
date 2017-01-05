@@ -378,7 +378,6 @@ static void ihdr_write_shutter_gain(kal_uint16 le, kal_uint16 se, kal_uint16 gai
     //LOG_INF("le:0x%x, se:0x%x, gain:0x%x\n",le,se,gain);
 }
 
-#if 0
 static void set_mirror_flip(kal_uint8 image_mirror)
 {
     LOG_INF("image_mirror = %d\n", image_mirror);
@@ -394,7 +393,14 @@ static void set_mirror_flip(kal_uint8 image_mirror)
        *   ISP and Sensor flip or mirror register bit should be the same!!
        *
        ********************************************************/
-
+/* Vanzo:zhangqingzhan on: Fri, 17 Oct 2014 10:16:30 +0800
+ * TODO: replace this line with your comment
+ */
+    if(0 == strncmp(VANZO_SUB_CAM_ROTATION, "180", 3))
+    {
+      image_mirror = IMAGE_HV_MIRROR;
+    }
+// End of Vanzo: zhangqingzhan
     switch (image_mirror) {
         case IMAGE_NORMAL:
             write_cmos_sensor(0x3820,((read_cmos_sensor(0x3820) & 0xF9) | 0x00));
@@ -417,7 +423,6 @@ static void set_mirror_flip(kal_uint8 image_mirror)
     }
 
 }
-#endif
 
 /*************************************************************************
 * FUNCTION
@@ -1163,7 +1168,7 @@ static kal_uint32 open(void)
     kal_uint32 sensor_id = 0;
     LOG_1;
     LOG_2;
-
+    
     //sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address
     while (imgsensor_info.i2c_addr_table[i] != 0xff) {
         spin_lock(&imgsensor_drv_lock);
@@ -1267,7 +1272,7 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     imgsensor.autoflicker_en = KAL_FALSE;
     spin_unlock(&imgsensor_drv_lock);
     preview_setting();
-    //set_mirror_flip(sensor_config_data->SensorImageMirror);
+    set_mirror_flip(sensor_config_data->SensorImageMirror);
     return ERROR_NONE;
 }    /*    preview   */
 
@@ -1310,7 +1315,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     }
     spin_unlock(&imgsensor_drv_lock);
     capture_setting(imgsensor.current_fps);
-    //set_mirror_flip(sensor_config_data->SensorImageMirror);
+    set_mirror_flip(sensor_config_data->SensorImageMirror);
     return ERROR_NONE;
 }    /* capture() */
 static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
@@ -1328,7 +1333,7 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     imgsensor.autoflicker_en = KAL_FALSE;
     spin_unlock(&imgsensor_drv_lock);
     normal_video_setting(imgsensor.current_fps);
-    //set_mirror_flip(sensor_config_data->SensorImageMirror);
+    set_mirror_flip(sensor_config_data->SensorImageMirror);
     return ERROR_NONE;
 }    /*    normal_video   */
 
@@ -1349,7 +1354,7 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     imgsensor.autoflicker_en = KAL_FALSE;
     spin_unlock(&imgsensor_drv_lock);
     hs_video_setting();
-    //set_mirror_flip(sensor_config_data->SensorImageMirror);
+    set_mirror_flip(sensor_config_data->SensorImageMirror);
     return ERROR_NONE;
 }    /*    hs_video   */
 
@@ -1369,7 +1374,7 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     imgsensor.autoflicker_en = KAL_FALSE;
     spin_unlock(&imgsensor_drv_lock);
     slim_video_setting();
-    //set_mirror_flip(sensor_config_data->SensorImageMirror);
+    set_mirror_flip(sensor_config_data->SensorImageMirror);
 
     return ERROR_NONE;
 }    /*    slim_video     */

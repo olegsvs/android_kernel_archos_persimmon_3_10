@@ -149,7 +149,7 @@ static imgsensor_info_struct imgsensor_info = {
 
 
 static imgsensor_struct imgsensor = {
-	.mirror = IMAGE_NORMAL,				//mirrorflip information
+	.mirror = IMAGE_HV_MIRROR,				//mirrorflip information
 	.sensor_mode = IMGSENSOR_MODE_INIT, //IMGSENSOR_MODE enum value,record current sensor mode,such as: INIT, Preview, Capture, Video,High Speed Video, Slim Video
 	.shutter = 0x4C00,					//current shutter
 	.gain = 0x0200,						//current gain
@@ -1292,6 +1292,9 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	preview_setting();
+//Vanzo:wujie on 2015.4.16
+    set_mirror_flip(imgsensor.mirror);
+// End of Vanzo:wujie 
 	return ERROR_NONE;
 }	/*	preview   */
 
@@ -1335,8 +1338,9 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 
 	capture_setting(imgsensor.current_fps); 
-	
-	
+//Vanzo:wujie on 2015.4.16
+    set_mirror_flip(imgsensor.mirror);
+// End of Vanzo:wujie 	
 	return ERROR_NONE;
 }	/* capture() */
 static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
@@ -1354,8 +1358,9 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
-	
-	
+//Vanzo:wujie on 2015.4.16
+    set_mirror_flip(imgsensor.mirror);
+// End of Vanzo:wujie 	
 	return ERROR_NONE;
 }	/*	normal_video   */
 
@@ -1376,7 +1381,9 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	hs_video_setting();
-	
+//Vanzo:wujie on 2015.4.16
+    set_mirror_flip(imgsensor.mirror);
+// End of Vanzo:wujie 
 	return ERROR_NONE;
 }	/*	hs_video   */
 
@@ -1396,7 +1403,9 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
-	
+//Vanzo:wujie on 2015.4.16
+    set_mirror_flip(imgsensor.mirror);
+// End of Vanzo:wujie 
 	return ERROR_NONE;
 }	/*	slim_video	 */
 

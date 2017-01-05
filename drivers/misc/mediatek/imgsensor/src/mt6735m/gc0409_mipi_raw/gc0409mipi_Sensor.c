@@ -43,13 +43,12 @@
 //#define LOG_INF(format, args...)    xlog_printk(ANDROID_LOG_INFO   , PFX, "[%s] " format, __FUNCTION__, ##args)
 #define LOG_INF(format, args...)    pr_debug(PFX "[%s] " format, __FUNCTION__, ##args)
 
-
-//#define IMAGE_NORMAL 
+#define IMAGE_NO_MIRROR 
 //#define IMAGE_H_MIRROR 
 //#define IMAGE_V_MIRROR 
 //#define IMAGE_HV_MIRROR 
 
-#if 1// def IMAGE_NORMAL
+#ifdef IMAGE_NO_MIRROR
 #define MIRROR 0x54
 #define BLK_VAL 0x3c
 #define STARTX 0x01
@@ -80,7 +79,7 @@
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 static imgsensor_info_struct imgsensor_info = {
-    .sensor_id = GC0409MIPI_SENSOR_ID,        //record sensor id defined in Kd_imgsensor.h
+    .sensor_id = GC0409_SENSOR_ID,        //record sensor id defined in Kd_imgsensor.h
 
     .checksum_value = 0xf7375923,        //checksum value for Camera Auto Test
 
@@ -601,7 +600,7 @@ static void sensor_init(void)
 	write_cmos_sensor(0xfe, 0x03);
 	write_cmos_sensor(0x10, 0x80);	
 	write_cmos_sensor(0x01, 0x03);
-	write_cmos_sensor(0x02, 0x22);
+	write_cmos_sensor(0x02, 0x44);
 	write_cmos_sensor(0x03, 0x96);
 	write_cmos_sensor(0x04, 0x01);
 	write_cmos_sensor(0x05, 0x00);

@@ -41,18 +41,6 @@
 
 #include <mach/mt_chip.h>
 
-#ifdef CONFIG_HCT_DEVICE_INFO_SUPPORT
-//#include "hct_devices.h"
-extern int hct_set_camera_device_used(char * module_name, int pdata);
-typedef enum 
-{ 
-    DEVICE_SUPPORTED = 0,        
-    DEVICE_USED = 1,
-}campatible_type;
-
-#endif
-
-
 /* Camera information */
 #define PROC_CAMERA_INFO "driver/camera_info"
 #define camera_info_size 128
@@ -1404,9 +1392,6 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
 
             PK_DBG(" Sensor found ID = 0x%x\n", sensorID);
             snprintf(mtk_ccm_name,sizeof(mtk_ccm_name),"%s CAM[%d]:%s;",mtk_ccm_name,g_invokeSocketIdx[i],g_invokeSensorNameStr[i]);
-            #ifdef CONFIG_HCT_DEVICE_INFO_SUPPORT
-            hct_set_camera_device_used(g_invokeSensorNameStr[i], (int)g_invokeSocketIdx[i]);
-            #endif
             err = ERROR_NONE;
 					if (DUAL_CAMERA_MAIN_SENSOR == g_invokeSocketIdx[i])
 					{
@@ -1428,6 +1413,22 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
         {
             PK_DBG("ERROR:adopt_CAMERA_HW_CheckIsAlive(), No imgsensor alive\n");
         }
+/* Vanzo:maxiaojun on: Mon, 26 Aug 2013 17:04:18 +0800
+ * board device name support.
+ */
+#ifdef VANZO_DEVICE_NAME_SUPPORT
+        {
+          extern void v_set_dev_name(int id, char *name);
+          if(ERROR_NONE == err){
+            if(DUAL_CAMERA_MAIN_SENSOR==g_invokeSocketIdx[i]){
+              v_set_dev_name(3, (char *)g_invokeSensorNameStr[i]);
+            }else if(DUAL_CAMERA_SUB_SENSOR==g_invokeSocketIdx[i]){
+              v_set_dev_name(4, (char *)g_invokeSensorNameStr[i]);
+            }
+          }
+        }
+#endif
+// End of Vanzo:maxiaojun
         }
     }
     }
@@ -2170,7 +2171,6 @@ inline static int kdSetSensorGpio(int *pBuf)
 #ifndef GPIO_CMPCLK_M_CMCSK
     #define GPIO_CMPCLK_M_CMCSK   GPIO_MODE_02
 #endif
-
     int ret = 0;
     IMGSENSOR_GPIO_STRUCT *pSensorgpio = (IMGSENSOR_GPIO_STRUCT *)pBuf;
 

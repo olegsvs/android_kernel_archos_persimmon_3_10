@@ -66,7 +66,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -78,7 +78,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 4,
 		.grabwindow_width = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		.max_framerate = 300,
 	},
 	.cap1 = {							//capture for PIP 24fps relative information, capture1 mode must use same framelength, linelength with Capture mode for shutter calculate
@@ -89,7 +89,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 4,
 		.grabwindow_width = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		.max_framerate = 240,	//less than 13M(include 13M),cap1 max framerate is 24fps,16M max framerate is 20fps, 20M max framerate is 15fps
 	},
 	.normal_video = {
@@ -100,7 +100,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 4,
 		.grabwindow_width = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		.max_framerate = 300,
 	},
 	.hs_video = {
@@ -111,7 +111,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 4,
 		.grabwindow_width = 3264,
 		.grabwindow_height = 2448,
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		.max_framerate = 300,
 	},
 	.slim_video = {
@@ -122,7 +122,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.starty = 4,
 		.grabwindow_width = 1280,
 		.grabwindow_height = 720,
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		.max_framerate = 300,
 
 	},
@@ -135,7 +135,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -148,7 +148,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -161,7 +161,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -174,7 +174,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -187,7 +187,7 @@ static imgsensor_info_struct imgsensor_info = {
 		.grabwindow_width = 1632,		//record different mode's width of grabwindow
 		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
-		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
+		.mipi_data_lp2hs_settle_dc = 85,//unit , ns
 		/*	 following for GetDefaultFramerateByScenario()	*/
 		.max_framerate = 300,
 	},
@@ -216,7 +216,11 @@ static imgsensor_info_struct imgsensor_info = {
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,//sensor_interface_type
 	.mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
 	.mipi_settle_delay_mode = 1,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
+#ifdef VANZO_IMGSENSOR_IMX219_ROTATION
+	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,//sensor output first pixel color
+#else
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_R,//sensor output first pixel color
+#endif
 	.mclk = 24,//mclk value, suggest 24 or 26 for 24Mhz or 26Mhz
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,//mipi lane num
 	.i2c_addr_table = {0x21, 0x20, 0xff},//record sensor support all write id addr, only supprt 4must end with 0xff
@@ -225,7 +229,11 @@ static imgsensor_info_struct imgsensor_info = {
 
 
 static imgsensor_struct imgsensor = {
+#ifdef VANZO_IMGSENSOR_IMX219_ROTATION
 	.mirror = IMAGE_NORMAL,				//mirrorflip information
+#else
+	.mirror = IMAGE_HV_MIRROR,				//mirrorflip information
+#endif
 	.sensor_mode = IMGSENSOR_MODE_INIT, //IMGSENSOR_MODE enum value,record current sensor mode,such as: INIT, Preview, Capture, Video,High Speed Video, Slim Video
 	.shutter = 0x3D0,					//current shutter
 	.gain = 0x100,						//current gain
@@ -585,7 +593,7 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-UINT16 iPreGain = 0;
+static UINT16 iPreGain = 0;
 static kal_uint16 set_gain(kal_uint16 gain)
 {
 	kal_uint16 reg_gain;
@@ -638,7 +646,7 @@ static void ihdr_write_shutter_gain(kal_uint16 le, kal_uint16 se, kal_uint16 gai
 }
 
 
-#if 0
+#if 1
 static void set_mirror_flip(kal_uint8 image_mirror)
 {
 	LOG_INF("image_mirror = %d\n", image_mirror);
@@ -1089,7 +1097,7 @@ static void slim_video_setting(void)
 	}
 }
 //
-kal_uint8  test_pattern_flag=0;
+static kal_uint8  test_pattern_flag=0;
 
 static kal_uint32 set_test_pattern_mode(kal_bool enable)
 {
@@ -1288,7 +1296,7 @@ static kal_uint32 open(void)
 
 	/* initail sequence write in  */
 	sensor_init();
-
+    set_mirror_flip(imgsensor.mirror);
 	iPreGain = 0;
 
 	spin_lock(&imgsensor_drv_lock);

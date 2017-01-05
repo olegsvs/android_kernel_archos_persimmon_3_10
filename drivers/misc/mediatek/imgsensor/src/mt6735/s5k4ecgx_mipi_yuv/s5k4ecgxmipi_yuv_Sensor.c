@@ -77,9 +77,7 @@
 #define S5K4ECGX_MIPI_DEBUG
 #ifdef S5K4ECGX_MIPI_DEBUG
 #define LOG_TAG "[4EC]"
-#define SENSORDB(fmt, arg...)    xlog_printk(ANDROID_LOG_DEBUG , LOG_TAG, fmt, ##arg)
-//#define SENSORDB(fmt, arg...)  printk(KERN_ERR fmt, ##arg)
-//#define SENSORDB(fmt, arg...) xlog_printk(ANDROID_LOG_DEBUG, "4EC", fmt, ##arg)
+#define SENSORDB(fmt, arg...)    pr_debug(fmt, ##arg)
 #else
 #define SENSORDB(x,...)
 #endif
@@ -2088,7 +2086,7 @@ jpegParserParseImage(unsigned char* srcBuf, unsigned int bufSize, unsigned int *
 
 
     rdPtr += 636;
-    SENSORDB("[4EC] jpegParserParseImage:A (rd,end)=(0x%x,0x%x)\n", rdPtr, endPtr);
+    SENSORDB("[4EC] jpegParserParseImage:A (rd,end)=(0x%p,0x%p)\n", rdPtr, endPtr);
 
 
     while (rdPtr < endPtr)
@@ -2098,7 +2096,7 @@ jpegParserParseImage(unsigned char* srcBuf, unsigned int bufSize, unsigned int *
             if (JPEG_MARKER_EOI == rdPtr[1])
             {
                 rdPtr += 2;
-                SENSORDB("[4EC] jpegParserParseImage B:Encounter FFD9: rdPtr=0x%x\n", rdPtr);
+                SENSORDB("[4EC] jpegParserParseImage B:Encounter FFD9: rdPtr=0x%p\n", rdPtr);
                 break;
             }
             rdPtr += 1;
@@ -2110,7 +2108,7 @@ jpegParserParseImage(unsigned char* srcBuf, unsigned int bufSize, unsigned int *
             {
                 if (!(memcmp(array100Zeros, rdPtr, 100)))
                 {
-                    SENSORDB("[4EC] jpegParserParseImage:C offsetOfEncounter100Zeros = 1: rdPtr=0x%x\n", rdPtr);
+                    SENSORDB("[4EC] jpegParserParseImage:C offsetOfEncounter100Zeros = 1: rdPtr=0x%p\n", rdPtr);
                     offsetOfEncounter100Zeros = rdPtr;
                 }
             }
@@ -2125,10 +2123,10 @@ jpegParserParseImage(unsigned char* srcBuf, unsigned int bufSize, unsigned int *
        rdPtr[0] = 0xFF;
        rdPtr[1] = 0xD9;
        rdPtr += 2;
-       SENSORDB("[4EC] jpegParserParseImage:D offsetOfEncounter100Zeros = 1: rdPtr=0x%x\n", rdPtr);
+       SENSORDB("[4EC] jpegParserParseImage:D offsetOfEncounter100Zeros = 1: rdPtr=0x%p\n", rdPtr);
     }
 
-    SENSORDB("[4EC] jpegParserParseImage:E Marker:(%x,%x); (rd,end)=(0x%x,0x%x)\n",rdPtr[-2], rdPtr[-1], rdPtr, endPtr);
+    SENSORDB("[4EC] jpegParserParseImage:E Marker:(%x,%x); (rd,end)=(0x%p,0x%p)\n",rdPtr[-2], rdPtr[-1], rdPtr, endPtr);
 
 
    *eoiOffset = (rdPtr - srcBuf);

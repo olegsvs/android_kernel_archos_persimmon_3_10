@@ -844,11 +844,7 @@ static void sensor_init(void)
     write_cmos_sensor(0x9341,0x3C);
     write_cmos_sensor(0x9342,0x03);
     write_cmos_sensor(0x9343,0xFF);
-#if defined(CONFIG_T875_PROJ)
-    write_cmos_sensor(0x0101,0x00);
-#else
     write_cmos_sensor(0x0101,0x03);
-#endif
 }	/*	sensor_init  */
 
 

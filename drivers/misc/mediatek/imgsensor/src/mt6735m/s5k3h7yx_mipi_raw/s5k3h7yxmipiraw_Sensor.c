@@ -59,8 +59,8 @@ static imgsensor_info_struct imgsensor_info = {
 		.framelength =2530, //3168,			//record different mode's framelength
 		.startx = 0,					//record different mode's startx of grabwindow
 		.starty = 0,					//record different mode's starty of grabwindow
-		.grabwindow_width = 1600,		//record different mode's width of grabwindow
-		.grabwindow_height = 1200,		//record different mode's height of grabwindow
+		.grabwindow_width = 1632,		//record different mode's width of grabwindow
+		.grabwindow_height = 1224,		//record different mode's height of grabwindow
 
 		/*	 following for MIPIDataLowPwr2HighSpeedSettleDelayCount by different scenario	*/
 		.mipi_data_lp2hs_settle_dc = 65,//unit , ns
@@ -148,7 +148,7 @@ static imgsensor_info_struct imgsensor_info = {
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr,
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,
-	.i2c_addr_table = {0x20, 0xff},
+	.i2c_addr_table = {0x20, 0x5A, 0xff},
 };
 
 
@@ -292,10 +292,10 @@ static void write_shutter(kal_uint16 shutter)
 		}
 #endif
 		// Update Shutter
-		write_cmos_sensor_8(0x0104,0x01);
+		//write_cmos_sensor_8(0x0104,0x01);
 		write_cmos_sensor(0x0340, imgsensor.frame_length);
 		write_cmos_sensor(0x0202, shutter);
-		write_cmos_sensor_8(0x0104,0x00);
+		//write_cmos_sensor_8(0x0104,0x00);
         LOG_INF("Currently camera mode is %d,shutter is %d, framelength=%d,linelength=%d\n",imgsensor.sensor_mode,imgsensor.shutter,imgsensor.frame_length,imgsensor.line_length);
 
 }	/*	write_shutter  */
@@ -382,10 +382,10 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	 spin_unlock(&imgsensor_drv_lock);
 	 LOG_INF("gain = %d , reg_gain = 0x%x,shutter=%d,the result of gain*shutter is %d ", gain, reg_gain,imgsensor.shutter,gain*(imgsensor.shutter));
 	
-	 write_cmos_sensor_8(0x0104, 0x01);
+	 //write_cmos_sensor_8(0x0104, 0x01);
 	 write_cmos_sensor_8(0x0204,(reg_gain>>8));
 	 write_cmos_sensor_8(0x0205,(reg_gain&0xff));
-	 write_cmos_sensor_8(0x0104, 0x00);
+	 //write_cmos_sensor_8(0x0104, 0x00);
 
 
 	 return gain;

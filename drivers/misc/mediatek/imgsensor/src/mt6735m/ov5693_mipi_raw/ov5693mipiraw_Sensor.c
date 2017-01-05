@@ -48,7 +48,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 
 static imgsensor_info_struct imgsensor_info = {
-	.sensor_id = OV5693_SENSOR_ID,
+	.sensor_id = OV5693MIPI_SENSOR_ID,
 
     .checksum_value = 0xf7375923,        //checksum value for Camera Auto Test
 

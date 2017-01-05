@@ -59,7 +59,7 @@ static DEFINE_SPINLOCK(GC0310_drv_lock);
 #define SENSORDB(x,...)
 #endif
 
-#define GC0310_TEST_PATTERN_CHECKSUM (0xfd769299)
+#define GC0310_TEST_PATTERN_CHECKSUM (0x9db2de6e)
 
 kal_bool GC0310_night_mode_enable = KAL_FALSE;
 kal_uint16 GC0310_CurStatus_AWB = 0;
@@ -1802,13 +1802,12 @@ BOOL GC0310_set_param_exposure(UINT16 para)
 	switch (para)
 	{
 	
-        case AE_EV_COMP_n30:
+		case AE_EV_COMP_n20:
 			GC0310_write_cmos_sensor(0xfe, 0x01);
 			GC0310_write_cmos_sensor(0x13, 0x20);
 			GC0310_write_cmos_sensor(0xfe, 0x00);
 		break;
 
-        case AE_EV_COMP_n20:
 		case AE_EV_COMP_n10:
 			GC0310_write_cmos_sensor(0xfe, 0x01);
 			GC0310_write_cmos_sensor(0x13, 0x28);  // 28 to 10
@@ -1821,15 +1820,15 @@ BOOL GC0310_set_param_exposure(UINT16 para)
 			GC0310_write_cmos_sensor(0xfe, 0x00);
 		break;
 
-        case AE_EV_COMP_10:
-        case AE_EV_COMP_20:
+		case AE_EV_COMP_15:    	
+		case AE_EV_COMP_10:
 			GC0310_write_cmos_sensor(0xfe, 0x01);
 			GC0310_write_cmos_sensor(0x13, 0x48);  // 48 to 60
 			GC0310_write_cmos_sensor(0xfe, 0x00);
 			Sleep(200);
 		break;
 		
-        case AE_EV_COMP_30:
+		case AE_EV_COMP_20:
 			GC0310_write_cmos_sensor(0xfe, 0x01);
 			GC0310_write_cmos_sensor(0x13, 0x50);
 			GC0310_write_cmos_sensor(0xfe, 0x00);

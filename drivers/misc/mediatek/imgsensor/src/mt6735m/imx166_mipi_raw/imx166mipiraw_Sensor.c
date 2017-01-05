@@ -1814,8 +1814,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	UINT32 *feature_return_para_32=(UINT32 *) feature_para;
 	UINT32 *feature_data_32=(UINT32 *) feature_para;
     unsigned long long *feature_data=(unsigned long long *) feature_para;
-	
-	SENSOR_WINSIZE_INFO_STRUCT *wininfo;	
+
+	SENSOR_WINSIZE_INFO_STRUCT *wininfo;
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data=(MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
  
 	LOG_INF("feature_id = %d\n", feature_id);
@@ -1825,7 +1825,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*feature_return_para_16 = imgsensor.frame_length;
 			*feature_para_len=4;
 			break;
-		case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:	 
+		case SENSOR_FEATURE_GET_PIXEL_CLOCK_FREQ:
 			*feature_return_para_32 = imgsensor.pclk;
 			*feature_para_len=4;
 			break;		   
@@ -1858,8 +1858,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
             set_video_mode(*feature_data);
 			break;
 		case SENSOR_FEATURE_CHECK_SENSOR_ID:
-			get_imgsensor_id(feature_return_para_32); 
-			break; 
+			get_imgsensor_id(feature_return_para_32);
+			break;
 		case SENSOR_FEATURE_SET_AUTO_FLICKER_MODE:
 			set_auto_flicker_mode((BOOL)*feature_data_16,*(feature_data_16+1));
 			break;

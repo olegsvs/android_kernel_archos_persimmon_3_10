@@ -13,9 +13,6 @@
  *     Source code of Sensor driver
  *
  *
- *	debug by superpix zhangzhaoen
- *  version: 1.0
- *  2015-06-03
  *------------------------------------------------------------------------------
  * Upper this line, this part is controlled by CC/CQ. DO NOT MODIFY!!
  *============================================================================
@@ -295,7 +292,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 
 static imgsensor_info_struct imgsensor_info = { 
-    .sensor_id = SP2508MIPI_SENSOR_ID,
+    .sensor_id = SP2508_SENSOR_ID,
     .checksum_value = 0xffd8e112,        //checksum value for Camera Auto Test
 
     .pre = {
@@ -358,7 +355,7 @@ static imgsensor_info_struct imgsensor_info = {
     .slim_video = {
         .pclk = 30000000,
         .linelength = 1160,
-        .framelength =1241,
+        .framelength = 1241,
         .startx = 0,
         .starty = 0,
         .grabwindow_width = 1600,
@@ -386,7 +383,7 @@ static imgsensor_info_struct imgsensor_info = {
     .sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,//sensor_interface_type
     .mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
     .mipi_settle_delay_mode = MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
-    .sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,// B
+    .sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_B,//sensor output first pixel color
     .mclk = 24,//mclk value, suggest 24 or 26 for 24Mhz or 26Mhz
     .mipi_lane_num = SENSOR_MIPI_1_LANE,//mipi lane num
     .i2c_addr_table = {0x78, 0x7a, 0xff},//record sensor support all write id addr, only supprt 4must end with 0xff
@@ -394,7 +391,7 @@ static imgsensor_info_struct imgsensor_info = {
 
 
 static imgsensor_struct imgsensor = {
-    .mirror = IMAGE_H_MIRROR,             //mirrorflip information
+    .mirror = IMAGE_NORMAL,             //mirrorflip information
     .sensor_mode = IMGSENSOR_MODE_INIT, //IMGSENSOR_MODE enum value,record current sensor mode,such as: INIT, Preview, Capture, Video,High Speed Video, Slim Video
     .shutter = 0x46e,                   //current shutter   // Danbo ??
     .gain = 0x40,                      //current gain     // Danbo ??
@@ -549,35 +546,35 @@ static kal_uint16 set_gain(kal_uint16 gain)
 { 
          kal_uint8  iReg;
 
-		if(gain >= BASEGAIN && gain <= 15*BASEGAIN)
-		{   
-			 iReg = 0x10 * gain/BASEGAIN;        //change mtk gain base to aptina gain base
-			 //iReg += (gain%BASEGAIN)/(0x10/BASEGAIN);
-							
-			 if(iReg<=0x10)
-			 {
-					 write_cmos_sensor(0xfd, 0x01);
-					 write_cmos_sensor(0x24, 0x10);//0x23
-					 write_cmos_sensor(0x01, 0x01);
-					 LOG_INF("SP2508MIPI_SetGain = 16");
-			 }
-			 else if(iReg>= 0xa0)//gpw
-			 {
-					 write_cmos_sensor(0xfd, 0x01);
-					 write_cmos_sensor(0x24,0xa0);
-					 write_cmos_sensor(0x01, 0x01); 
-					 LOG_INF("SP2508MIPI_SetGain = 160"); 
-			 }        	
-			 else
-			 {
-					write_cmos_sensor(0xfd, 0x01);
-					write_cmos_sensor(0x24, (kal_uint8)iReg);
-					write_cmos_sensor(0x01, 0x01);
-					LOG_INF("SP2508MIPI_SetGain = %d",iReg);		 
-			}	
-		}	
-		else
-			 LOG_INF("error gain setting");	 
+	    if(gain >= BASEGAIN && gain <= 15*BASEGAIN)
+   	 {   
+   	    	 iReg = 0x10 * gain/BASEGAIN;        //change mtk gain base to aptina gain base
+               iReg+= (gain%BASEGAIN)/(0x10/BASEGAIN);
+						   	
+   	    	 if(iReg<=0x10)
+   	    	 {
+   	    	    	 write_cmos_sensor(0xfd, 0x01);
+   	    	    	 write_cmos_sensor(0x24, 0x10);//0x23
+   	    	    	 write_cmos_sensor(0x01, 0x01);
+                      LOG_INF("SP2508MIPI_SetGain = 16");
+   	    	 }
+   	    	 else if(iReg>= 0xa0)//gpw
+   	    	 {
+   	    	    	 write_cmos_sensor(0xfd, 0x01);
+   	    	    	 write_cmos_sensor(0x24,0xa0);
+   	    	    	 write_cmos_sensor(0x01, 0x01); 
+                      LOG_INF("SP2508MIPI_SetGain = 160"); 
+	        }        	
+   	    	 else
+   	    	 {
+   	    	    	write_cmos_sensor(0xfd, 0x01);
+   	    	    	write_cmos_sensor(0x24, (kal_uint8)iReg);
+   	    	    	write_cmos_sensor(0x01, 0x01);
+			LOG_INF("SP2508MIPI_SetGain = %d",iReg);		 
+	       }	
+   	 }	
+   	 else
+   	    	 LOG_INF("error gain setting");	 
 	 
         return gain;
 }    /*    set_gain  */
@@ -589,22 +586,19 @@ static void ihdr_write_shutter_gain(kal_uint16 le, kal_uint16 se, kal_uint16 gai
 static void set_mirror_flip(kal_uint8 image_mirror)
 {
 	LOG_INF("image_mirror = %d\n", image_mirror);
-	
-	return;	//test
-	
-    write_cmos_sensor(0xfd,0x01);
+       write_cmos_sensor(0xfd,0x01);
 	switch (image_mirror)
 	{
-		case IMAGE_NORMAL: //IMAGE_NORMAL:			
+		case IMAGE_NORMAL://IMAGE_NORMAL:			
          		write_cmos_sensor(0x3f,0x00);
 			break;
-		case IMAGE_H_MIRROR: //IMAGE_H_MIRROR:
+		case IMAGE_H_MIRROR://IMAGE_H_MIRROR:
          		write_cmos_sensor(0x3f,0x01);
 			break;
-		case IMAGE_V_MIRROR: //IMAGE_V_MIRROR:
+		case IMAGE_V_MIRROR://IMAGE_V_MIRROR:
          		write_cmos_sensor(0x3f,0x02);
 			break;
-		case IMAGE_HV_MIRROR: //IMAGE_HV_MIRROR:
+		case IMAGE_HV_MIRROR://IMAGE_HV_MIRROR:
          		write_cmos_sensor(0x3f,0x03);
 			break;
 		default:
@@ -641,12 +635,8 @@ static void sensor_init(void)
 	//p1:0x2b=0xc4, p1:0x58=0x30, pixel bias 2u
 	//add offset h'20 and  remove the digital gain
 	//T_horizontal=1160, base is h'103, 21fps
-	//add digital gain 1.3x \BD\E2\BE\F6\B8\DF\C1\C1\B7\A2\B7\DB\CE\CA\CC\E2
-	//add digital gain 1.377x\BD\E2\BE\F6\B8\DF\C1\C1\B7\A2\B7\DB\CE\CA\CC\E2 20150515
+	//add digital gain 1.3x 解决高亮发粉问题
 	{
-	write_cmos_sensor(0xfd,0x01);
-	write_cmos_sensor(0x3f,0x00);//0x03
-
 	write_cmos_sensor(0xfd,0x00);
 	write_cmos_sensor(0x1c,0x03);
 	write_cmos_sensor(0x35,0x20); //pll bias
@@ -664,12 +654,12 @@ static void sensor_init(void)
 	write_cmos_sensor(0x09,0x01); //hblank
 	write_cmos_sensor(0x0a,0x40);
 	write_cmos_sensor(0x21,0xef); //pcp tx 4.05v
-	write_cmos_sensor(0x25,0xf0); //reg dac 2.7v, enable bl_en,vbl 1.28v 原为0xf2 \B8\C4为0xf0 \BD\B5\B5\CD太\D1\F4\BA\DA\D7\D3\CC婊籠B5\E7压
+	write_cmos_sensor(0x25,0xf2); //reg dac 2.7v, enable bl_en,vbl 1.4v
 	write_cmos_sensor(0x26,0x00); //vref2 1v, disable ramp driver
 	write_cmos_sensor(0x2a,0xea); //bypass dac res, adc range 0.745, vreg counter 0.9
 	write_cmos_sensor(0x2c,0xf0); //high 8bit, pldo 2.7v
-	write_cmos_sensor(0x8a,0x44); //pixel bias 1.58uA 原为0x55 \B8\C4为0x44 \BD\B5\B5\CDpixel bias
-	write_cmos_sensor(0x8b,0x44); //原为0x55 \B8\C4为0x44 \BD\B5\B5\CDpixel bias
+	write_cmos_sensor(0x8a,0x55); //pixel bias 1uA
+	write_cmos_sensor(0x8b,0x55); 
 	write_cmos_sensor(0x19,0xf3); //icom1 1.7u, icom2 0.6u 
 	write_cmos_sensor(0x11,0x30); //rst num
 	write_cmos_sensor(0xd0,0x01); //disable boost
@@ -871,11 +861,11 @@ static kal_uint32 open(void)
 	} else {
 		preview_setting();
 		sensor_init();	
-	}
+    } 
 #else  
 	/* initail sequence write in  */
 	sensor_init();
-#endif	
+#endif
 	
 	 spin_lock(&imgsensor_drv_lock);
 	
@@ -1101,7 +1091,7 @@ static kal_uint32 get_info(MSDK_SCENARIO_ID_ENUM scenario_id,
 
 #ifdef DEBUG_SENSOR_SP2508
 	if(read_from_extern_flash(SP2508_OTHER_DEBUG_PATH)) {
-		printk("sp_zze: other debug!\n");
+		SP_LOG("sp_zze: other debug!\n");
 		SP2508_other_debug(SP2508_OTHER_DEBUG_PATH);
 	}
 #endif
@@ -1194,10 +1184,10 @@ static kal_uint32 get_info(MSDK_SCENARIO_ID_ENUM scenario_id,
             break;
     }
 	
-	printk("sp_zze: sensor_info->AEShutDelayFrame = %d\n", sensor_info->AEShutDelayFrame);
-	printk("sp_zze: sensor_info->AESensorGainDelayFrame = %d\n", sensor_info->AESensorGainDelayFrame);
-	printk("sp_zze: sensor_info->AEISPGainDelayFrame = %d\n", sensor_info->AEISPGainDelayFrame);
-	
+	//SP_LOG("sp_zze: sensor_info->AEShutDelayFrame = %d\n", sensor_info->AEShutDelayFrame);
+	//SP_LOG("sp_zze: sensor_info->AESensorGainDelayFrame = %d\n", sensor_info->AESensorGainDelayFrame);
+	//SP_LOG("sp_zze: sensor_info->AEISPGainDelayFrame = %d\n", sensor_info->AEISPGainDelayFrame);
+
     return ERROR_NONE;
 }    /*    get_info  */
 
