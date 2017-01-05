@@ -28,6 +28,7 @@
 #include <asm/atomic.h>
 //#include <asm/system.h>
 #include <linux/xlog.h>
+#include <mach/mt_gpio.h>
 
 #include "kd_camera_hw.h"
 #include "kd_imgsensor.h"
@@ -48,7 +49,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 #define MIPI_SETTLEDELAY_AUTO     0
 #define MIPI_SETTLEDELAY_MANNUAL  1
 
-
+#define S5K5E2_LITEON_CAM_ID GPIO11
 //#define CAPTURE_24FPS
 
 
@@ -144,11 +145,15 @@ static imgsensor_info_struct imgsensor_info = {
 	.isp_driving_current = ISP_DRIVING_6MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
 	.mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
-	.mipi_settle_delay_mode = MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
+	.mipi_settle_delay_mode = MIPI_SETTLEDELAY_MANNUAL,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr,
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_2_LANE,
+#if 0
 	.i2c_addr_table = {0x20, 0x6c, 0xff},
+#else
+    .i2c_addr_table = {0x20, 0xff},
+#endif
 };
 
 
@@ -199,6 +204,221 @@ static void write_cmos_sensor_8(kal_uint16 addr, kal_uint8 para)
     iWriteRegI2C(pusendcmd , 3, imgsensor.i2c_write_id);
 }
 
+static int S5K5E2YA_read_otp_mid(void)
+{
+	int mid = 0;
+	kal_uint16 PageCount;
+	for(PageCount = 2; PageCount<=4; PageCount++)
+	{
+		printk("%s,PageCount=%d.\n", __func__,PageCount);	
+		write_cmos_sensor(0x0a02, PageCount); //page set
+		write_cmos_sensor(0x0a00, 0x01); //otp enable read
+
+		if (read_cmos_sensor(0x0a43) == 0x1)
+		{
+			printk("%s,PageCount=%d, 0x0a43 Valid.\n", __func__,PageCount);
+			mid = read_cmos_sensor(0x0a24);
+			write_cmos_sensor(0x0a00, 0x00); //otp disable read
+			return mid;
+		}
+		else if (read_cmos_sensor(0x0a23) == 0x1)
+		{
+			printk("%s,PageCount=%d, 0x0a23 Valid.\n", __func__,PageCount);
+			mid = read_cmos_sensor(0x0a04);
+			write_cmos_sensor(0x0a00, 0x00); //otp disable read
+			return mid;
+		}
+		else
+		{
+			write_cmos_sensor(0x0a00, 0x00); //otp disable read
+			printk("%s, Page[%d] invalid.\n", __func__,PageCount);
+			continue;
+		}
+	}
+
+	printk("%s,Read OTP Mid fail.\n",__func__);
+	return mid;
+}
+
+#define USE_OTP_FUNC
+#if defined(USE_OTP_FUNC)
+
+static kal_uint32 tRG_Ratio_typical = RG_TYPICAL;
+static kal_uint32 tBG_Ratio_typical = BG_TYPICAL;
+static struct S5K5E2YA_MIPI_otp_struct current_otp;
+
+static void S5K5E2YA_MIPI_read_otp_wb(struct S5K5E2YA_MIPI_otp_struct *otp)
+{
+	kal_uint32 R_to_G, B_to_G;//, G_to_G;
+	kal_uint16 PageCount;
+	for(PageCount = 2; PageCount<=4;PageCount++)
+	{
+		LOG_INF("[S5K5E2YA]PageCount=%d\n", PageCount);	
+		write_cmos_sensor(0x0a02, PageCount); //page set
+		write_cmos_sensor(0x0a00, 0x01); //otp enable read
+		if (read_cmos_sensor(0x0a04) == 0x2)	//liteon otp mid =0x02
+		{
+			LOG_INF("[S5K5E2YA]page %d Valid.\n",PageCount);	
+			R_to_G = ((read_cmos_sensor(0x0a09)&0x00ff)<<8) + (read_cmos_sensor(0x0a0a)&0x00ff);
+			B_to_G = ((read_cmos_sensor(0x0a0b)&0x00ff)<<8) + (read_cmos_sensor(0x0a0c)&0x00ff);
+			//G_to_G = (read_cmos_sensor(0x0a2f)<<8)+read_cmos_sensor(0x0a30);
+		}else{
+			write_cmos_sensor(0x0a00, 0x00); //otp disable read
+			LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] Page[%d] invalid", PageCount);
+			continue;
+		}
+		write_cmos_sensor(0x0a00, 0x00); //otp disable read
+
+		if((R_to_G != 0) && (B_to_G != 0)) //&& (G_to_G != 0))
+			break;	
+
+	}
+	if(PageCount == 5)
+	{
+		LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] otp all value is zero");
+		return;
+	}
+	//otp->R_to_G = (R_to_G * 0x400) / G_to_G;
+	//otp->B_to_G = (B_to_G * 0x400) / G_to_G;
+	//otp->G_to_G = G_to_G;
+	otp->R_to_G = R_to_G;
+	otp->B_to_G = B_to_G;
+	printk("[S5K5E2YA] Read from module: R_to_G=0x%x,B_to_G=0x%x.\n", R_to_G,B_to_G);	
+	printk("[S5K5E2YA] RG_Ratio_typical = 0x%x,RG_Ratio_typical = 0x%x.\n",tRG_Ratio_typical,tBG_Ratio_typical);
+}
+
+static void S5K5E2YA_MIPI_algorithm_otp_wb1(struct S5K5E2YA_MIPI_otp_struct *otp)
+{
+	kal_uint32 R_to_G, B_to_G;
+	kal_uint32 R_Gain, B_Gain, G_Gain;
+	kal_uint32 G_gain_R, G_gain_B;
+	
+	R_to_G = otp->R_to_G;
+	B_to_G = otp->B_to_G;
+	//G_to_G = otp->G_to_G;
+
+	printk("[S5K5E2YA]  R_to_G=%d\n", R_to_G);	
+	printk("[S5K5E2YA]  B_to_G=%d\n", B_to_G);	
+	//printk("[S5K5E2YA]  G_to_G=%d\n", G_to_G);
+
+	if(B_to_G < tBG_Ratio_typical)
+	{
+		if(R_to_G < tRG_Ratio_typical)
+		{
+			G_Gain = 0x100;
+			B_Gain = 0x100 * tBG_Ratio_typical / B_to_G;
+			R_Gain = 0x100 * tRG_Ratio_typical / R_to_G;
+		}
+		else
+		{
+	        R_Gain = 0x100;
+			G_Gain = 0x100 * R_to_G / tRG_Ratio_typical;
+			B_Gain = G_Gain * tBG_Ratio_typical / B_to_G;	        
+		}
+	}
+	else
+	{
+		if(R_to_G < tRG_Ratio_typical)
+		{
+	        B_Gain = 0x100;
+			G_Gain = 0x100 * B_to_G / tBG_Ratio_typical;
+			R_Gain = G_Gain * tRG_Ratio_typical / R_to_G;
+		}
+		else
+		{
+	        G_gain_B = 0x100*B_to_G / tBG_Ratio_typical;
+		    G_gain_R = 0x100*R_to_G / tRG_Ratio_typical;
+			
+			if(G_gain_B > G_gain_R)
+			{
+				B_Gain = 0x100;
+				G_Gain = G_gain_B;
+				R_Gain = G_Gain * tRG_Ratio_typical / R_to_G;
+			}
+			else
+			{
+				R_Gain = 0x100;
+				G_Gain = G_gain_R;
+				B_Gain = G_Gain * tBG_Ratio_typical / B_to_G;
+			}        
+		}	
+	}
+
+	otp->R_Gain = R_Gain;
+	otp->B_Gain = B_Gain;
+	otp->G_Gain = G_Gain;
+	otp->awb_status = 1;
+	printk("[S5K5E2YA] After calcuate: R_gain=0x%x\n", otp->R_Gain);	
+	printk("[S5K5E2YA] After calcuate: B_gain=0x%x\n", otp->B_Gain);	
+	printk("[S5K5E2YA] After calcuate: G_gain=0x%x\n", otp->G_Gain);
+}
+
+
+
+static void S5K5E2YA_MIPI_write_otp_wb(struct S5K5E2YA_MIPI_otp_struct *otp)
+{
+	kal_uint16 R_GainH, B_GainH, G_GainH;
+	kal_uint16 R_GainL, B_GainL, G_GainL;
+	kal_uint32 temp;
+
+	printk("%s,E.\n",__func__);
+	temp = otp->R_Gain;
+	R_GainH = (temp & 0xff00)>>8;
+	temp = otp->R_Gain;
+	R_GainL = (temp & 0x00ff);
+
+	temp = otp->B_Gain;
+	B_GainH = (temp & 0xff00)>>8;
+	temp = otp->B_Gain;
+	B_GainL = (temp & 0x00ff);
+
+	temp = otp->G_Gain;
+	G_GainH = (temp & 0xff00)>>8;
+	temp = otp->G_Gain;
+	G_GainL = (temp & 0x00ff);
+
+	LOG_INF("[S5K5E2YA]  R_GainH=0x%x\n", R_GainH);	
+	LOG_INF("[S5K5E2YA]  R_GainL=0x%x\n", R_GainL);	
+	LOG_INF("[S5K5E2YA]  B_GainH=0x%x\n", B_GainH);
+	LOG_INF("[S5K5E2YA]  B_GainL=0x%x\n", B_GainL);	
+	LOG_INF("[S5K5E2YA]  G_GainH=0x%x\n", G_GainH);	
+	LOG_INF("[S5K5E2YA]  G_GainL=0x%x\n", G_GainL);
+
+	write_cmos_sensor(0x020e, G_GainH);
+	write_cmos_sensor(0x020f, G_GainL);
+	write_cmos_sensor(0x0210, R_GainH);
+	write_cmos_sensor(0x0211, R_GainL);
+	write_cmos_sensor(0x0212, B_GainH);
+	write_cmos_sensor(0x0213, B_GainL);
+	write_cmos_sensor(0x0214, G_GainH);
+	write_cmos_sensor(0x0215, G_GainL);
+
+	LOG_INF("[S5K5E2YA]final read:  [0x020e,0x%x]\n", read_cmos_sensor(0x020e));	
+	LOG_INF("[S5K5E2YA]final read:  [0x020f,0x%x]\n", read_cmos_sensor(0x020f));	
+	LOG_INF("[S5K5E2YA]final read:  [0x0210,0x%x]\n", read_cmos_sensor(0x0210));
+	LOG_INF("[S5K5E2YA]final read:  [0x0211,0x%x]\n", read_cmos_sensor(0x0211));	
+	LOG_INF("[S5K5E2YA]final read:  [0x0212,0x%x]\n", read_cmos_sensor(0x0212));	
+	LOG_INF("[S5K5E2YA]final read:  [0x0213,0x%x]\n", read_cmos_sensor(0x0213));
+	LOG_INF("[S5K5E2YA]final read:  [0x0214,0x%x]\n", read_cmos_sensor(0x0214));	
+	LOG_INF("[S5K5E2YA]final read:  [0x0215,0x%x]\n", read_cmos_sensor(0x0215));
+	printk("%s,X.\n",__func__);
+}
+
+static void update_wb_register_from_otp(void)
+{
+
+	printk("%s:otp setting start.\n",__func__);
+	if (current_otp.awb_status != 1)
+	{
+		printk("5E2:otp awb_status != 1\n");
+		S5K5E2YA_MIPI_read_otp_wb(&current_otp);
+		S5K5E2YA_MIPI_algorithm_otp_wb1(&current_otp);
+	}
+
+	S5K5E2YA_MIPI_write_otp_wb(&current_otp);
+	printk("%s,otp setting end.\n",__func__);
+}
+#endif
 
 static void set_dummy()
 {
@@ -561,7 +781,7 @@ static void sensor_init(void)
 	write_cmos_sensor(0x305C,0xF6);       // lob_extension[6]                                 
 	write_cmos_sensor(0x306B,0x10);                                                 
 	write_cmos_sensor(0x3063,0x27);       //  ADC_SAT 490mV --> 610mV                         
-	write_cmos_sensor(0x3400,0x01);       //  GAS bypass                                      
+	write_cmos_sensor(0x3400,0x00);       //  GAS bypass    bit0->0,enable lsc calibration                                   
 	write_cmos_sensor(0x3235,0x49);       //  L/F-ADLC on                                     
 	write_cmos_sensor(0x3233,0x00);       //  D-pedestal L/F ADLC off (1FC0h)                 
 	write_cmos_sensor(0x3234,0x00);                                                 
@@ -648,10 +868,15 @@ static void preview_setting(void)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x00);	 //  GAS bypass    bit0->0,enable lsc calibration  
 	
 	// streaming ON
-	write_cmos_sensor(0x0100,0x01); 	 
+	write_cmos_sensor(0x0100,0x01); 	
+
+#ifdef USE_OTP_FUNC
+	mdelay(50);
+	update_wb_register_from_otp(); 
+#endif 
 }	/*	preview_setting  */
 
 static void capture_setting(kal_uint16 currefps)
@@ -727,7 +952,7 @@ static void capture_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x00);	 //  GAS bypass    bit0->0,enable lsc calibration  
 	
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
@@ -800,11 +1025,15 @@ static void capture_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x00); //  GAS bypass    bit0->0,enable lsc calibration  
 
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 	}
+#ifdef USE_OTP_FUNC
+	mdelay(50);
+	update_wb_register_from_otp(); 
+#endif
 }
 
 static void normal_video_setting(kal_uint16 currefps)
@@ -881,11 +1110,15 @@ static void normal_video_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x00);	 //  GAS bypass    bit0->0,enable lsc calibration  
 	
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
-		
+
+#ifdef USE_OTP_FUNC
+	mdelay(50);
+	update_wb_register_from_otp(); 
+#endif	
 }
 static void hs_video_setting()
 {
@@ -966,7 +1199,10 @@ static void hs_video_setting()
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 
-
+#ifdef USE_OTP_FUNC
+	mdelay(50);
+	update_wb_register_from_otp(); 
+#endif
 
 	//full size 60fps
 /*
@@ -1115,11 +1351,15 @@ static void slim_video_setting()
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x00);	 //  GAS bypass    bit0->0,enable lsc calibration  
 	
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 
+#ifdef USE_OTP_FUNC
+	mdelay(50);
+	update_wb_register_from_otp(); 
+#endif
 }
 
 
@@ -1139,10 +1379,18 @@ static void slim_video_setting()
 * GLOBALS AFFECTED
 *
 *************************************************************************/
+static int s5k5e2_sysfs_init(void);
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id) 
 {
+    
 	kal_uint8 i = 0;
 	kal_uint8 retry = 2;
+	int otp_mid,cam_id;
+
+    mt_set_gpio_mode(S5K5E2_LITEON_CAM_ID,GPIO_MODE_00);
+    mt_set_gpio_dir(S5K5E2_LITEON_CAM_ID,GPIO_DIR_IN);
+	cam_id = mt_get_gpio_in(S5K5E2_LITEON_CAM_ID);
+	printk("%s,LITEON cam_id = %d.\n",__func__,cam_id);
 	//sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
@@ -1150,22 +1398,71 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		spin_unlock(&imgsensor_drv_lock);
 		do {
 			*sensor_id = return_sensor_id();
-			if (*sensor_id == imgsensor_info.sensor_id) {				
+			if (*sensor_id == imgsensor_info.sensor_id) {
+                s5k5e2_sysfs_init();
 				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);	  
-				return ERROR_NONE;
+				break;
 			}	
-			LOG_INF("Read sensor id fail, id: 0x%x, 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
+			LOG_INF("Read sensor id fail, id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
 			retry--;
 		} while(retry > 0);
+		if(*sensor_id == imgsensor_info.sensor_id)
+			break;
 		i++;
 		retry = 2;
 	}
-	if (*sensor_id != imgsensor_info.sensor_id) {
+
+	//otp_mid = S5K5E2YA_read_otp_mid();
+	//printk("%s,Otp_MID = %d.\n",__func__,otp_mid);	
+
+	if ((*sensor_id != imgsensor_info.sensor_id) || (cam_id != 0x0)) {	//liteon camId low valid
 		// if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF 
 		*sensor_id = 0xFFFFFFFF;
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
+
+	printk("%s,Read id Success,sensor id = 0x%x.\n",__func__,*sensor_id);
 	return ERROR_NONE;
+}
+
+static const char *s5k5e2Vendor = "SAMSUNG";
+static const char *s5k5e2NAME = "s5k5e2_front";
+static const char *s5k5e2Size = "5.0M";
+
+static ssize_t sensor_vendor_show(struct device *dev,
+                                 struct device_attribute *attr, char *buf)
+{
+  ssize_t ret = 0;
+  sprintf(buf, "%s %s %s\n", s5k5e2Vendor, s5k5e2NAME, s5k5e2Size);
+  ret = strlen(buf) + 1;
+
+  return ret;
+}
+
+static DEVICE_ATTR(sensor, 0444, sensor_vendor_show, NULL);
+static struct kobject *android_s5k5e2 = NULL;
+
+static int s5k5e2_sysfs_init(void)
+{
+  int ret ;
+  LOG_INF("kobject creat and add\n");
+  if(android_s5k5e2 == NULL){
+    android_s5k5e2 = kobject_create_and_add("android_camera2", NULL);
+    if (android_s5k5e2 == NULL) {
+      LOG_INF("subsystem_register failed\n");
+      ret = -ENOMEM;
+      return ret ;
+    }
+    LOG_INF("sysfs_create_file\n");
+    ret = sysfs_create_file(android_s5k5e2, &dev_attr_sensor.attr);
+    if (ret) {
+      LOG_INF("sysfs_create_file " \
+             "failed\n");
+      kobject_del(android_s5k5e2);
+      android_s5k5e2 = NULL;
+    }
+  }
+  return 0 ;
 }
 
 

@@ -116,6 +116,35 @@ typedef struct imgsensor_info_struct {
 
 } imgsensor_info_struct;
 
+struct S5K5E2YA_MIPI_otp_struct
+{
+    kal_uint16 customer_id;
+	kal_uint16 module_integrator_id;
+	kal_uint16 lens_id;
+	kal_uint16 year;
+	kal_uint16 month;
+	kal_uint16 day;
+	kal_uint16 rg_ratio;
+	kal_uint16 bg_ratio;
+	kal_uint16 user_data[5];
+	kal_uint16 R_avg_H;
+	kal_uint16 R_avg_L;
+	kal_uint16 G_avg_H;
+	kal_uint16 G_avg_L;
+	kal_uint16 B_avg_H;
+	kal_uint16 B_avg_L;
+        kal_uint16 R_gold_H;
+	kal_uint16 R_gold_L;
+	kal_uint16 G_gold_H;
+	kal_uint16 G_gold_L;
+	kal_uint16 B_gold_H;
+	kal_uint16 B_gold_L;
+	kal_uint16 R_Gain;
+	kal_uint16 G_Gain;
+	kal_uint16 B_Gain;
+};
+
+
 /* SENSOR READ/WRITE ID */
 //#define IMGSENSOR_WRITE_ID_1 (0x6c)
 //#define IMGSENSOR_READ_ID_1  (0x6d)

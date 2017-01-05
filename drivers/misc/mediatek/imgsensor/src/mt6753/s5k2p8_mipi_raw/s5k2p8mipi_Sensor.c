@@ -1537,21 +1537,22 @@ static void preview_setting(void)
 		write_cmos_sensor_8(0x021B,0x00);
 	}
 	write_cmos_sensor(0x0100,0x0100);	//smiaRegs_rw_general_setup // Stream on
-//		while(retry<10)
-//			{if(read_cmos_sensor_8(0x0005)==0xff)
-//				{
-//				  mdelay(10);
-//				  retry++;
-//				  LOG_INF("Sensor has not output\n");
-//				}
-//			 else
-//				{
+    /*EVB seldom output fail issue. Need retry*/
+	while(retry<10)
+	{if(read_cmos_sensor_8(0x0005)==0xff)
+		{
+		  mdelay(10);
+		  retry++;
+		  LOG_INF("Sensor has not output\n");
+		}
+	 else
+		{
 
-//					retry=0;
-//					LOG_INF("Sensor has output\n");
-//					break;
-//				}
-//			}
+			retry=0;
+			LOG_INF("Sensor has output\n");
+			break;
+		}
+	}
 
 //	write_cmos_sensor(0x3A70,0x0000);
 //	write_cmos_sensor(0x3A72,0x0000);
