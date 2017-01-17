@@ -1046,8 +1046,7 @@ u32 i = 0;
     return ERROR_NONE;
 }
 
-/****************
-***************************************************************
+/*******************************************************************************
 * kdSetDriver
 ********************************************************************************/
 int kdSetDriver(unsigned int *pDrvIndex)
@@ -1363,19 +1362,10 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
     UINT32 i = 0;
     MUINT32 sensorID = 0;
     MUINT32 retLen = 0;
-    MINT32 ret = ERROR_NONE;//HTC_ADD
 #ifndef CONFIG_MTK_FPGA
     KD_IMGSENSOR_PROFILE_INIT();
     /* power on sensor */
-    //HTC_MODIFY_START
-    ret = kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, true, CAMERA_HW_DRVNAME1);
-    if (ERROR_NONE != ret) {
-        err = ERROR_SENSOR_POWER_ON_FAIL;
-        PK_ERR("[%s] ERROR_SENSOR_POWER_ON_FAIL", __func__);
-
-    }else
-    {
-    //HTC_MODIFY_END
+    kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, true, CAMERA_HW_DRVNAME1);
     /* wait for power stable */
     mDELAY(10);
     KD_IMGSENSOR_PROFILE("kdModulePowerOn");
@@ -1414,32 +1404,18 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
         }
         }
     }
-    //HTC_START
-    /* reset sensor state after power off */
-    err1 = g_pSensorFunc->SensorClose();
-    if (ERROR_NONE != err1) {
-    PK_DBG("SensorClose\n");
-    }
-    //HTC_END
     }
     else {
     PK_DBG("ERROR:NULL g_pSensorFunc\n");
     }
 
     /* reset sensor state after power off */
-    #if 0 //HTC_ADD
     err1 = g_pSensorFunc->SensorClose();
     if (ERROR_NONE != err1) {
     PK_DBG("SensorClose\n");
     }
-    #endif //HTC_ADD
-    }
     /*  */
-    ret = kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, false, CAMERA_HW_DRVNAME1);
-    if (ERROR_NONE != ret) {
-        err = ERROR_SENSOR_POWER_ON_FAIL;
-        PK_ERR("[%s] ERROR_SENSOR_POWER_ON_FAIL", __func__);
-    }
+    kdModulePowerOn((CAMERA_DUAL_CAMERA_SENSOR_ENUM *)g_invokeSocketIdx, g_invokeSensorNameStr, false, CAMERA_HW_DRVNAME1);
     /*  */
     KD_IMGSENSOR_PROFILE("CheckIsAlive");
 #else
@@ -1448,7 +1424,7 @@ inline static int adopt_CAMERA_HW_CheckIsAlive(void)
     g_IsSearchSensor = 0;
 
     return err ?  -EIO:err;
-}   /* adopt_CAMERA_HW_CheckIsAlive */
+}   /* adopt_CAMERA_HW_Open() */
 
 
 /*******************************************************************************
@@ -1899,7 +1875,6 @@ inline static int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
     case SENSOR_FEATURE_GET_PDAF_INFO:
     case SENSOR_FEATURE_GET_PDAF_DATA:
     case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
-	case SENSOR_FEATURE_SET_ISO:
         /*  */
         if (copy_from_user((void *)pFeaturePara , (void *) pFeatureCtrl->pFeaturePara, FeatureParaLen)) {
         kfree(pFeaturePara);
@@ -2065,7 +2040,6 @@ inline static int  adopt_CAMERA_HW_FeatureControl(void *pBuf)
     case SENSOR_FEATURE_SET_MIN_MAX_FPS:
     case SENSOR_FEATURE_GET_PDAF_INFO:
     case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
-	case SENSOR_FEATURE_SET_ISO:
         /*  */
         if (copy_to_user((void __user *) pFeatureCtrl->pFeaturePara, (void *)pFeaturePara , FeatureParaLen)) {
         kfree(pFeaturePara);
@@ -2161,8 +2135,8 @@ inline static int kdSetSensorGpio(int *pBuf)
 {
 /* Redefine Parallel GPIO usage. If user want Parallel, Please make sure DCT have parallel Pin Define*/
 #ifndef GPIO_CMDAT0
-    #define GPIO_CMDAT0             (GPIO57 | 0x80000000)
-    #define GPIO_CMDAT1             (GPIO58 | 0x80000000)
+    #define GPIO_CMDAT0             (GPIO42 | 0x80000000)
+    #define GPIO_CMDAT1             (GPIO43 | 0x80000000)
     #define GPIO_CMPCLK             (GPIO44 | 0x80000000)
 #endif
 #ifndef GPIO_CMDAT0_M_CMDAT
@@ -2433,12 +2407,11 @@ static int compat_put_acdk_sensor_resolution_info_struct(
         COMPAT_ACDK_SENSOR_PRESOLUTION_STRUCT __user *data32,
         ACDK_SENSOR_RESOLUTION_INFO_STRUCT __user *data)
 {
-    /* int err; */ //HTC_COMMENT
+    int err;
     /* err = copy_to_user((void*)data, (void*)data32, sizeof(compat_uptr_t) * 2); */
     /* err = copy_to_user((void*)data[0], (void*)data32[0], sizeof(ACDK_SENSOR_RESOLUTION_INFO_STRUCT)); */
     /* err = copy_to_user((void*)data[1], (void*)data32[1], sizeof(ACDK_SENSOR_RESOLUTION_INFO_STRUCT)); */
-    /* return err; */ //HTC_COMMENT
-    return 0; //HTC_ADD
+    return err;
 }
 
 
@@ -2606,20 +2579,10 @@ static long CAMERA_HW_Ioctl(
 
     mutex_lock(&kdCam_Mutex);
 
-    //HTC_START
-    pBuff = kmalloc(_IOC_SIZE(a_u4Command), GFP_KERNEL);
-
-    if (NULL == pBuff) {
-        PK_DBG("[CAMERA SENSOR] ioctl allocate mem failed\n");
-        i4RetValue = -ENOMEM;
-        goto CAMERA_HW_Ioctl_EXIT;
-    }
-    //HTC_END
 
     if (_IOC_NONE == _IOC_DIR(a_u4Command)) {
     }
     else {
-    #if 0 //HTC_ADD
     pBuff = kmalloc(_IOC_SIZE(a_u4Command), GFP_KERNEL);
 
     if (NULL == pBuff) {
@@ -2627,7 +2590,7 @@ static long CAMERA_HW_Ioctl(
         i4RetValue = -ENOMEM;
         goto CAMERA_HW_Ioctl_EXIT;
     }
-    #endif //HTC_ADD
+
     if (_IOC_WRITE & _IOC_DIR(a_u4Command)) {
         if (copy_from_user(pBuff , (void *) a_u4Param, _IOC_SIZE(a_u4Command))) {
         kfree(pBuff);

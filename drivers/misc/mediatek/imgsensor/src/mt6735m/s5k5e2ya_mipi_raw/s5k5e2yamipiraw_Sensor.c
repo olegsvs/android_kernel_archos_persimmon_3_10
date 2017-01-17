@@ -17,7 +17,7 @@
  * Upper this line, this part is controlled by CC/CQ. DO NOT MODIFY!!
  *============================================================================
  ****************************************************************************/
-    
+
 #include <linux/videodev2.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
@@ -49,27 +49,14 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 #define MIPI_SETTLEDELAY_MANNUAL  1
 
 
-#define S5K5E2YA_USE_AWB_OTP
-//#define S5K5E2YA_USE_LSC_OTP
-#define OTP_SUPPORT_TRULY
-
-#define TRULY_ID           0x02
-#define VALID_OTP          0x00
-
-BYTE T_module_id = 0;
-BYTE T_flag_otp = 0;
-
-#ifdef S5K5E2YA_USE_AWB_OTP
-void S5K5E2YA_MIPI_update_wb_register_from_otp(void);
-#endif
-
-
 //#define CAPTURE_24FPS
 
 
 static imgsensor_info_struct imgsensor_info = { 
 	.sensor_id = S5K5E2YA_SENSOR_ID,
-	.checksum_value = 0xa48ebf5d,
+	
+	.checksum_value = 0x87e356d9,
+	
 	.pre = {
 		.pclk = 179200000,				//record different mode's pclk
 		.linelength = 2950,				//record different mode's linelength
@@ -157,11 +144,15 @@ static imgsensor_info_struct imgsensor_info = {
 	.isp_driving_current = ISP_DRIVING_6MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
 	.mipi_sensor_type = MIPI_OPHY_NCSI2, //0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2
-	.mipi_settle_delay_mode = MIPI_SETTLEDELAY_MANNUAL,//MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
+	.mipi_settle_delay_mode = MIPI_SETTLEDELAY_AUTO,//0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL
+#ifdef VANZO_CAM_S5K5E2_RATION_180	
+	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gb,
+#else
 	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr,
+#endif
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_2_LANE,
-	.i2c_addr_table = {0x20, 0xff},
+	.i2c_addr_table = {0x20, 0x6c, 0xff},
 };
 
 
@@ -195,7 +186,6 @@ static kal_uint16 read_cmos_sensor(kal_uint32 addr)
 	kal_uint16 get_byte=0;
 
 	char pu_send_cmd[2] = {(char)(addr >> 8), (char)(addr & 0xFF) };
-	//printk("*******zqiang read addr= %x %x*******\n",pu_send_cmd[0],pu_send_cmd[1]);
 	iReadRegI2C(pu_send_cmd, 2, (u8*)&get_byte, 1, imgsensor.i2c_write_id);
 
 	return get_byte;
@@ -210,7 +200,7 @@ static void write_cmos_sensor(kal_uint32 addr, kal_uint32 para)
 static void write_cmos_sensor_8(kal_uint16 addr, kal_uint8 para)
 {
     char pusendcmd[4] = {(char)(addr >> 8) , (char)(addr & 0xFF) ,(char)(para & 0xFF)};
-    iWriteRegI2C(pusendcmd , 4, imgsensor.i2c_write_id);
+    iWriteRegI2C(pusendcmd , 3, imgsensor.i2c_write_id);
 }
 
 
@@ -463,510 +453,6 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 
 }
 
-#ifdef OTP_SUPPORT_TRULY
-
-#define USHORT             unsigned short
-#define BYTE               unsigned char
-
-//#define INVALID_OTP        0x01
-
-#define GAIN_DEFAULT       0x0100
-#define GAIN_GREEN1_ADDR   0x020E
-#define GAIN_BLUE_ADDR     0x0212
-#define GAIN_RED_ADDR      0x0210
-#define GAIN_GREEN2_ADDR   0x0214
-
-USHORT truly_golden_r=0;
-USHORT truly_golden_gr=0;
-USHORT truly_golden_gb=0;
-USHORT truly_golden_b=0;
-
-USHORT truly_current_r=0;
-USHORT truly_current_gr=0;
-USHORT truly_current_gb=0;
-USHORT truly_current_b=0;
-
-kal_uint32 truly_r_ratio;
-kal_uint32 truly_b_ratio;
-
-inline BYTE S5K5E2YA_byteread_cmos_sensor(kal_uint32 addr)
-{
-	BYTE get_byte=0;
-	char puSendCmd[2] = {(char)(addr >> 8) , (char)(addr & 0xFF) };
-	iReadRegI2C(puSendCmd , 2, (u8*)&get_byte,1,imgsensor.i2c_write_id);
-	return get_byte;
-}
-
-static void S5K5E2YA_wordwrite_cmos_sensor(kal_uint16 addr, kal_uint16 para)
-{
-    char pusendcmd[4] = {(char)(addr >> 8) , (char)(addr & 0xFF) ,(char)(para >> 8),(char)(para & 0xFF)};
-    iWriteRegI2C(pusendcmd , 4, imgsensor.i2c_write_id);
-}
-
-static void S5K5E2YA_bytewrite_cmos_sensor(kal_uint16 addr, kal_uint8 para)
-{
-    char pusendcmd[3] = {(char)(addr >> 8) , (char)(addr & 0xFF) ,(char)(para & 0xFF)};
-    iWriteRegI2C(pusendcmd , 3, imgsensor.i2c_write_id);
-}
-
-
-//kal_uint32	truly_golden_r = 0, truly_golden_gr = 0, truly_golden_gb = 0, truly_golden_b = 0;
-//kal_uint32	truly_current_r = 0, truly_current_gr = 0, truly_current_gb = 0, truly_current_b = 0;
-/*************************************************************************************************
-* Function    :  truly_start_read_otp
-* Description :  before read otp , set the reading block setting  
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  0, reading block setting err
-                 1, reading block setting ok 
-**************************************************************************************************/
-bool truly_start_read_otp(BYTE zone)
-{
-	S5K5E2YA_bytewrite_cmos_sensor(0x0100, 0x00);//stream off
-  S5K5E2YA_bytewrite_cmos_sensor(0x0A00, 0x04);//make initial state
-	S5K5E2YA_bytewrite_cmos_sensor(0x0A02, zone);   //Select the page to write by writing to 0xD0000A02 0x00~0x0F
-	S5K5E2YA_bytewrite_cmos_sensor(0x0A00, 0x01);   //Enter read mode by writing 01h to 0xD0000A00
-	
-    mdelay(2);//wait time > 47us
-
-	return 1;
-}
-
-/*************************************************************************************************
-* Function    :  truly_stop_read_otp
-* Description :  after read otp , stop and reset otp block setting  
-**************************************************************************************************/
-void truly_stop_read_otp()
-{
-  S5K5E2YA_bytewrite_cmos_sensor(0x0A00, 0x04);//make initial state
-	S5K5E2YA_bytewrite_cmos_sensor(0x0A00, 0x00);//Disable NVM controller
-//	S5K5E2YA_bytewrite_cmos_sensor(0x0100, 0x01);//stream on
-	
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_stop_read_otp
-* Description :  get otp AWB_WRITTEN_FLAG  
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE], if 0x00 , this type has valid or empty otp data, otherwise, invalid otp data
-**************************************************************************************************/
-BYTE truly_get_otp_AWB_flag(BYTE zone)
-{
-    BYTE flag_AWB = 0x01;
-    truly_start_read_otp(zone);
-    flag_AWB = S5K5E2YA_byteread_cmos_sensor(0x0A42);
-    truly_stop_read_otp();
-
-    printk("S5K5E2 truly++: flag_AWB := 0x%02x \n", flag_AWB );
-	return flag_AWB;
-}
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_LSC_flag
-* Description :  get otp LSC_WRITTEN_FLAG  
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE], if 0x00 , this type has valid or empty otp data, otherwise, invalid otp data
-**************************************************************************************************/
-BYTE truly_get_otp_LSC_flag(BYTE zone)
-{
-    BYTE flag_LSC = 0x01;
-    truly_start_read_otp(zone);
-    flag_LSC = S5K5E2YA_byteread_cmos_sensor(0x0A43);
-    truly_stop_read_otp();
-
-    printk("S5K5E2 truly++: flag_LSC := 0x%02x \n", flag_LSC );
-	return flag_LSC;
-}
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_T_module_id
-* Description :  get otp MID value 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE] 0 : OTP data fail 
-                 other value : module ID data , TRULY ID is 0x0001            
-**************************************************************************************************/
-BYTE truly_get_otp_T_module_id(BYTE zone)
-{
-	BYTE T_module_id = 0;
-
-	truly_start_read_otp(zone);
-
-	T_module_id = S5K5E2YA_byteread_cmos_sensor(0x0A04);
-
-	truly_stop_read_otp();
-
-	printk("S5K5E2 truly++: Module ID = 0x%02x.\n",T_module_id);
-
-	return T_module_id;
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_date
-* Description :  get otp date value    
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f    
-**************************************************************************************************/
-bool truly_get_otp_date(BYTE zone) 
-{
-	BYTE year  = 0;
-	BYTE month = 0;
-	BYTE day   = 0;
-
-	truly_start_read_otp(zone);
-
-	year  = S5K5E2YA_byteread_cmos_sensor(0x0A05);
-	month = S5K5E2YA_byteread_cmos_sensor(0x0A06);
-	day   = S5K5E2YA_byteread_cmos_sensor(0x0A07);
-
-	truly_stop_read_otp();
-
-    printk("S5K5E2 truly++: date=%02d.%02d.%02d \n", year,month,day);
-
-	return 1;
-}
-
-
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_lens_id
-* Description :  get otp LENS_ID value 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE] 0 : OTP data fail 
-                 other value : LENS ID data             
-**************************************************************************************************/
-BYTE truly_get_otp_lens_id(BYTE zone)
-{
-	BYTE lens_id = 0;
-
-	truly_start_read_otp(zone);
-	
-	lens_id = S5K5E2YA_byteread_cmos_sensor(0x0A08);
-	truly_stop_read_otp();
-
-	printk("S5K5E2 truly++: Lens ID = 0x%02x.\n",lens_id);
-
-	return lens_id;
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_vcm_id
-* Description :  get otp VCM_ID value 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE] 0 : OTP data fail 
-                 other value : VCM ID data             
-**************************************************************************************************/
-BYTE truly_get_otp_vcm_id(BYTE zone)
-{
-	BYTE vcm_id = 0;
-
-	truly_start_read_otp(zone);
-	
-	vcm_id = S5K5E2YA_byteread_cmos_sensor(0x0A09);
-
-	truly_stop_read_otp();
-
-	printk("S5K5E2 truly++: VCM ID = 0x%02x.\n",vcm_id);
-
-	return vcm_id;	
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_driverIC_id
-* Description :  get otp driverIC id value 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE] 0 : OTP data fail 
-                 other value : driver ID data             
-**************************************************************************************************/
-BYTE truly_get_otp_driverIC_id(BYTE zone)
-{
-	BYTE driverIC_id = 0;
-
-	truly_start_read_otp(zone);
-	
-	driverIC_id = S5K5E2YA_byteread_cmos_sensor(0x0A0A);
-
-	truly_stop_read_otp();
-
-	printk("S5K5E2 truly++: Driver ID = 0x%02x.\n",driverIC_id);
-
-	return driverIC_id;
-}
-
-/*************************************************************************************************
-* Function    :  truly_get_light_id
-* Description :  get otp environment light temperature value 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [BYTE] 0 : OTP data fail 
-                        other value : driver ID data     
-			            BIT0:D65(6500K) EN
-						BIT1:D50(5100K) EN
-						BIT2:CWF(4000K) EN
-						BIT3:A Light(2800K) EN
-**************************************************************************************************/
-BYTE truly_get_light_id(BYTE zone)
-{
-	BYTE light_id = 0;
-
-	truly_start_read_otp(zone);	
-
-	light_id = S5K5E2YA_byteread_cmos_sensor(0x0A0B);
-
-	truly_stop_read_otp();
-
-	printk("S5K5E2 truly++: Light ID: 0x%02x.\n",light_id);
-
-	return light_id;
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_otp_lenc_update
-* Description :  Update lens correction 
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f
-* Return      :  [bool] 0 : OTP data fail 
-                        1 : otp_lenc update success            
-**************************************************************************************************/
-bool truly_otp_lenc_update(USHORT zone)
-{
-    BYTE  flag_LSC = 0x01;
-    flag_LSC = truly_get_otp_LSC_flag(zone);
-    printk("S5K5E2 truly++: flag_LSC =0x%x \n",flag_LSC);
-
-    //
-    if(flag_LSC == 0)
-    {
-        //LSC correct
-        S5K5E2YA_bytewrite_cmos_sensor(0x0B00,0x01);
-        S5K5E2YA_bytewrite_cmos_sensor(0x3400,0x00);
-    }
-    //Load LSC SRAM data
-    else
-    {
-        printk("S5K5E2 truly++: flag_LSC =0x%x,LSC Load SRAM Data!!!!! \n",flag_LSC);
-        return 0;
-    }
-    return 1;
-}
-
-
-
-/*************************************************************************************************
-* Function    :  truly_wb_gain_set
-* Description :  Set WB ratio to register gain setting  512x
-* Parameters  :  [int] truly_r_ratio : R ratio data compared with golden module R
-                       truly_b_ratio : B ratio data compared with golden module B
-* Return      :  [bool] 0 : set wb fail 
-                        1 : WB set success            
-**************************************************************************************************/
-
-bool truly_wb_gain_set()
-{
-    USHORT R_GAIN;
-    USHORT B_GAIN;
-    USHORT Gr_GAIN;
-    USHORT Gb_GAIN;
-    USHORT G_GAIN;
-
-    if(!truly_r_ratio || !truly_b_ratio)
-    {
-        printk("S5K5E2 truly++: OTP WB ratio Data Err!\n");
-        return 0;
-    }
-
-    if(truly_r_ratio >= 512 )
-    {
-        if(truly_b_ratio>=512) 
-        {
-            R_GAIN = (USHORT)(GAIN_DEFAULT * truly_r_ratio / 512);						
-            G_GAIN = GAIN_DEFAULT;
-            B_GAIN = (USHORT)(GAIN_DEFAULT * truly_b_ratio / 512);
-        }
-        else
-        {
-            R_GAIN =  (USHORT)(GAIN_DEFAULT*truly_r_ratio / truly_b_ratio );
-            G_GAIN = (USHORT)(GAIN_DEFAULT*512 / truly_b_ratio );
-            B_GAIN = GAIN_DEFAULT;    
-        }
-    }
-    else                      
-    {		
-        if(truly_b_ratio >= 512)
-        {
-            R_GAIN = GAIN_DEFAULT;
-            G_GAIN = (USHORT)(GAIN_DEFAULT*512 /truly_r_ratio);		
-            B_GAIN =  (USHORT)(GAIN_DEFAULT*truly_b_ratio / truly_r_ratio );
-        } 
-        else 
-        {
-            Gr_GAIN = (USHORT)(GAIN_DEFAULT*512/ truly_r_ratio );						
-            Gb_GAIN = (USHORT)(GAIN_DEFAULT*512/truly_b_ratio );						
-            if(Gr_GAIN >= Gb_GAIN)						
-            {						
-                R_GAIN = GAIN_DEFAULT;						
-                G_GAIN = (USHORT)(GAIN_DEFAULT *512/ truly_r_ratio );						
-                B_GAIN =  (USHORT)(GAIN_DEFAULT*truly_b_ratio / truly_r_ratio );						
-            } 
-            else
-            {						
-                R_GAIN =  (USHORT)(GAIN_DEFAULT*truly_r_ratio  / truly_b_ratio);						
-                G_GAIN = (USHORT)(GAIN_DEFAULT*512 / truly_b_ratio );						
-                B_GAIN = GAIN_DEFAULT;
-            }
-        }        
-    }
-
-    S5K5E2YA_wordwrite_cmos_sensor(GAIN_RED_ADDR, R_GAIN);		
-    S5K5E2YA_wordwrite_cmos_sensor(GAIN_BLUE_ADDR, B_GAIN);     
-    S5K5E2YA_wordwrite_cmos_sensor(GAIN_GREEN1_ADDR, G_GAIN); //Green 1 default gain 1x		
-    S5K5E2YA_wordwrite_cmos_sensor(GAIN_GREEN2_ADDR, G_GAIN); //Green 2 default gain 1x
-    printk("S5K5E2 truly++: OTP WB Update Finished! \n");
-    
-	return 1;
-}
-
-
-
-/*************************************************************************************************
-* Function    :  truly_get_otp_wb
-* Description :  Get WB data    
-* Parameters  :  [BYTE] zone : OTP PAGE index , 0x00~0x0f      
-**************************************************************************************************/
-bool truly_get_otp_wb(BYTE zone)
-{
-	BYTE temph = 0;
-	BYTE templ = 0;
-	truly_golden_r = 0, truly_golden_gr = 0, truly_golden_gb = 0, truly_golden_b = 0;
-	truly_current_r = 0, truly_current_gr = 0, truly_current_gb = 0, truly_current_b = 0;
-
-    truly_start_read_otp(zone);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A19);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A18);   
-	truly_golden_r  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A1B);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A1A);   
-	truly_golden_gr  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A1D);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A1C);   
-	truly_golden_gb  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A1F);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A1E);   
-	truly_golden_b  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A11);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A10);   
-	truly_current_r  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A13);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A12);   
-	truly_current_gr  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A15);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A14);   
-	truly_current_gb  = (USHORT)templ + ((USHORT)temph << 8);
-
-	temph = S5K5E2YA_byteread_cmos_sensor(0x0A17);  
-	templ = S5K5E2YA_byteread_cmos_sensor(0x0A16);   
-	truly_current_b  = (USHORT)templ + ((USHORT)temph << 8);
-
-	truly_stop_read_otp();
-	
-    printk("S5K5E2 truly++: truly_golden_r=%d,truly_golden_gr=%d,truly_golden_gb=%d,truly_golden_b=%d \n",truly_golden_r,truly_golden_gr,truly_golden_gb,truly_golden_b);
-    printk("S5K5E2 truly++: truly_current_r=%d,truly_current_gr=%d,truly_current_gb=%d,truly_current_b=%d \n",truly_current_r,truly_current_gr,truly_current_gb,truly_current_b);    
-	return 1;
-}
-
-
-/*************************************************************************************************
-* Function    :  truly_otp_wb_update
-* Description :  Update WB correction 
-* Return      :  [bool] 0 : OTP data fail 
-                        1 : otp_WB update success            
-**************************************************************************************************/
-bool truly_otp_wb_update(BYTE zone)
-{
-	USHORT golden_g, current_g;
-
-
-	if(!truly_get_otp_wb(zone))  // get wb data from otp
-		return 0;
-
-	golden_g = (truly_golden_gr + truly_golden_gb) / 2;
-	current_g = (truly_current_gr + truly_current_gb) / 2;
-
-	if(!golden_g || !current_g || !truly_golden_r || !truly_golden_b || !truly_current_r || !truly_current_b)
-	{
-		printk("S5K5E2 truly++: WB update Err !\n");
-		return 0;
-	}
-
-	truly_r_ratio = 512 * truly_golden_r * current_g /( golden_g * truly_current_r );
-	truly_b_ratio = 512 * truly_golden_b * current_g /( golden_g * truly_current_b );
-  printk("S5K5E2 truly++: truly_r_ratio=%d, truly_b_ratio=%d \n",truly_r_ratio, truly_b_ratio);
-	truly_wb_gain_set();
-
-	printk("S5K5E2 truly++: WB update finished! \n");
-
-	return 1;
-}
-
-/*************************************************************************************************
-* Function    :  truly_otp_update()
-* Description :  update otp data from otp , it otp data is valid, 
-                 it include get ID and WB update function  
-* Return      :  [bool] 0 : update fail
-                        1 : update success
-**************************************************************************************************/
-bool truly_otp_update()
-{
-	BYTE zone = 0x02;//start from Page 2
-	BYTE FLG = 0x00;
-	BYTE MID = 0x00,LENS_ID= 0x00,VCM_ID= 0x00;
-	int i;
-	
-	printk("****enter truly_otp_update****\n");
-	for(i=0;i<3;i++)
-	{
-		T_module_id = truly_get_otp_T_module_id(zone);
-		T_flag_otp = truly_get_otp_AWB_flag(zone);
-		if(T_flag_otp == VALID_OTP &&  T_module_id==TRULY_ID)
-			break;
-		else
-	  	zone ++;
-	}
-	if(i==3)
-	{
-		printk("S5K5E2 truly++: No OTP Data or OTP data is invalid!!\n");
-		return 0;
-	}
- //   truly_get_otp_date(zone);
- //   LENS_ID=	truly_get_otp_lens_id(zone);
- //   VCM_ID=	truly_get_otp_vcm_id(zone);
- //   truly_get_otp_driverIC_id(zone);
- //   truly_get_light_id(zone);
- 
-	truly_otp_wb_update(zone);
-	
-	if(!truly_otp_lenc_update(zone))
-	{
-		printk("Update LSC Err\n");
-		return 0;
-	}
-	else
-		printk("Load LSC OTP Finished\n");
-		
-//	Sleep(30);
-
-  return 1;
-	
-}
-#endif
-
 /*************************************************************************
 * FUNCTION
 *	night_mode
@@ -1079,7 +565,7 @@ static void sensor_init(void)
 	write_cmos_sensor(0x305C,0xF6);       // lob_extension[6]                                 
 	write_cmos_sensor(0x306B,0x10);                                                 
 	write_cmos_sensor(0x3063,0x27);       //  ADC_SAT 490mV --> 610mV                         
-	//write_cmos_sensor(0x3400,0x01);       //  GAS bypass                                      
+	write_cmos_sensor(0x3400,0x01);       //  GAS bypass                                      
 	write_cmos_sensor(0x3235,0x49);       //  L/F-ADLC on                                     
 	write_cmos_sensor(0x3233,0x00);       //  D-pedestal L/F ADLC off (1FC0h)                 
 	write_cmos_sensor(0x3234,0x00);                                                 
@@ -1091,35 +577,11 @@ static void sensor_init(void)
 	write_cmos_sensor(0x320C,0x06);       // ADC_MAX                                          
 	write_cmos_sensor(0x320D,0xC0);  
 
-	write_cmos_sensor(0x3929,0x07); 
-	write_cmos_sensor(0x0B00,0x01);	
-	//set mipi non-continue mode
-	
-	#ifdef OTP_SUPPORT_TRULY
-	if(!truly_otp_update())
-   	LOG_INF("TRULY OTP LOAD Err or NO TRULY MODULE\n");
-   else
-   	LOG_INF("TRULY OTP LOAD SUCCESS\n");
-	#endif
-
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	if(T_module_id != TRULY_ID)
-	{
-	S5K5E2YA_MIPI_update_wb_register_from_otp();
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-  }
-	#endif
+	write_cmos_sensor(0x3929,0x07);       //set mipi non-continue mode
  	
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
-
-	mdelay(50);
-	
-	
 }	/*	sensor_init  */
-
-
 
 
 static void preview_setting(void)
@@ -1190,18 +652,11 @@ static void preview_setting(void)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x01);
 	
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	// streaming ON
-	write_cmos_sensor(0x0100,0x01); 
-	
-	 
+	write_cmos_sensor(0x0100,0x01); 	 
 }	/*	preview_setting  */
-	
 
 static void capture_setting(kal_uint16 currefps)
 {
@@ -1276,16 +731,10 @@ static void capture_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x01);
 	
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
-	
-	
 	}
 	else{// Reset for operation     30fps for normal capture                                                                    
 	write_cmos_sensor(0x0100,0x00); //stream off
@@ -1355,16 +804,10 @@ static void capture_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x01);
 
 	// streaming ON
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	write_cmos_sensor(0x0100,0x01); 
-	
-	
 	}
 }
 
@@ -1442,16 +885,10 @@ static void normal_video_setting(kal_uint16 currefps)
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x01);
 	
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
-
-	
 		
 }
 static void hs_video_setting()
@@ -1528,12 +965,8 @@ static void hs_video_setting()
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x00);
+	write_cmos_sensor(0x3400,0x00);
 	
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 
@@ -1613,8 +1046,6 @@ static void hs_video_setting()
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 */
-
-	
 }
 
 static void slim_video_setting()
@@ -1688,12 +1119,8 @@ static void slim_video_setting()
 	write_cmos_sensor(0x3459,0x33);
 	write_cmos_sensor(0x345A,0x04);
 	write_cmos_sensor(0x345B,0x44);
-	//write_cmos_sensor(0x3400,0x01);
+	write_cmos_sensor(0x3400,0x01);
 	
-	#ifdef S5K5E2YA_USE_AWB_OTP
-	write_cmos_sensor(0x0B00,0x01);
-	write_cmos_sensor(0x3400,0x00);	
-	#endif
 	// streaming ON
 	write_cmos_sensor(0x0100,0x01); 
 
@@ -1716,29 +1143,10 @@ static void slim_video_setting()
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-//LC--zbl--20150611--for camera dev_info start
-#undef   SLT_DEVINFO_CMM
-#define  SLT_DEVINFO_CMM
-#ifdef   SLT_DEVINFO_CMM
-#include <linux/dev_info.h>
-#endif
-//LC--zbl--20150611--for camera dev_info end
 static kal_uint32 get_imgsensor_id(UINT32 *sensor_id) 
 {
 	kal_uint8 i = 0;
 	kal_uint8 retry = 2;
-//LC--zbl--20150611--for camera dev_info start
-	#ifdef SLT_DEVINFO_CMM
-	struct devinfo_struct *dev;
-	dev=(struct devinfo_struct*)kmalloc(sizeof(struct devinfo_struct), GFP_KERNEL);
-		dev->device_type = "CCM-S";
-		dev->device_module = "Xinli";
-		dev->device_vendor ="unknow";  
-		dev->device_ic	 = "s5k5e2ya";
-		dev->device_version = "unknow";
-		dev->device_info = "500W";
-	#endif
-//LC--zbl--20150611--for camera dev_info end
 	//sensor have two i2c address 0x6c 0x6d & 0x21 0x20, we should detect the module used i2c address
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
@@ -1747,12 +1155,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		do {
 			*sensor_id = return_sensor_id();
 			if (*sensor_id == imgsensor_info.sensor_id) {				
-				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);	
-			#ifdef SLT_DEVINFO_CMM
-				dev->device_used	=	DEVINFO_USED;
-//				devinfo_check_add_device(dev);
-			#endif
-  
+				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);	  
 				return ERROR_NONE;
 			}	
 			LOG_INF("Read sensor id fail, id: 0x%x\n", imgsensor.i2c_write_id,*sensor_id);
@@ -1763,15 +1166,9 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	}
 	if (*sensor_id != imgsensor_info.sensor_id) {
 		// if Sensor ID is not correct, Must set *sensor_id to 0xFFFFFFFF 
-//LC--zbl--20150611--for camera dev_info start
-		#ifdef SLT_DEVINFO_CMM
-			dev->device_used	=	DEVINFO_UNUSED;
-//			devinfo_check_add_device(dev);
-		#endif
 		*sensor_id = 0xFFFFFFFF;
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
-
 	return ERROR_NONE;
 }
 
@@ -1905,6 +1302,9 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	preview_setting();
+#ifdef VANZO_CAM_S5K5E2_RATION_180
+	set_mirror_flip(IMAGE_HV_MIRROR);
+#endif
 	return ERROR_NONE;
 }	/*	preview   */
 
@@ -2318,26 +1718,7 @@ static kal_uint32 set_test_pattern_mode(kal_bool enable)
 	if (enable) {
 		// 0x5E00[8]: 1 enable,  0 disable
 		// 0x5E00[1:0]; 00 Color bar, 01 Random Data, 10 Square, 11 BLACK
-
-				
-		write_cmos_sensor(0x0200, 0x0D);
-		write_cmos_sensor(0x0201, 0x78);
-		write_cmos_sensor(0x0202, 0x04);
-		write_cmos_sensor(0x0203, 0xE2);
-		write_cmos_sensor(0x0204, 0x00);
-		write_cmos_sensor(0x0205, 0x20);
-		
-		write_cmos_sensor(0x020E, 0x01);
-		write_cmos_sensor(0x020F, 0x00);
-		write_cmos_sensor(0x0210, 0x01);
-		write_cmos_sensor(0x0211, 0x00);
-		write_cmos_sensor(0x0212, 0x01);
-		write_cmos_sensor(0x0213, 0x00);
-		write_cmos_sensor(0x0214, 0x01);
-		write_cmos_sensor(0x0215, 0x00);
-		
-		write_cmos_sensor(0x3400, 0x01);
-		write_cmos_sensor(0x0601, 0x02);
+		write_cmos_sensor(0x0601, 0x01);
 	} else {
 		// 0x5E00[8]: 1 enable,  0 disable
 		// 0x5E00[1:0]; 00 Color bar, 01 Random Data, 10 Square, 11 BLACK
@@ -2488,413 +1869,3 @@ UINT32 S5K5E2YA_MIPI_RAW_SensorInit(PSENSOR_FUNCTION_STRUCT *pfFunc)
 		*pfFunc=&sensor_func;
 	return ERROR_NONE;
 }	/*	OV5693_MIPI_RAW_SensorInit	*/
-
-
-#ifdef S5K5E2YA_USE_AWB_OTP
-
-#define RG_TYPICAL 0x349
-#define BG_TYPICAL 0x2B9
-
-
-kal_uint32 tRG_Ratio_typical = RG_TYPICAL;
-kal_uint32 tBG_Ratio_typical = BG_TYPICAL;
-void S5K5E2YA_MIPI_LSC_from_otp(void);
-
-void S5K5E2YA_MIPI_read_otp_wb(struct S5K5E2YA_MIPI_otp_struct *otp)
-{
-	kal_uint32 R_avg_H, R_avg_L, G_avg_H,G_avg_L,B_avg_H,B_avg_L;
-	kal_uint32 R_gold_H, R_gold_L, G_gold_H,G_gold_L,B_gold_H,B_gold_L;
-	kal_uint32 ret,ret1;
-	kal_uint16 PageCount;
-	for(PageCount = 3; PageCount>=2; PageCount--)
-	{
-		LOG_INF("[S5K5E2YA] [OTP] PageCount=%d\n", PageCount);	
-		write_cmos_sensor(0x0100,0x00);
-		mdelay(10);
-		write_cmos_sensor(0x0A00,0x04);
-		write_cmos_sensor(0x0A02, PageCount); //page set
-		write_cmos_sensor(0x0A00, 0x01); //otp enable read
-		mdelay(100);
-	        ret = read_cmos_sensor(0x0A23);
-	        ret1 = read_cmos_sensor(0x0A43);
-	       LOG_INF("[S5K5E2YA] [OTP] ret=%d,ret1=%d\n", ret,ret1);	
-		if(ret==0x1)
-		{
-			LOG_INF("[S5K5E2YA] [OTP] group1 is done");
-			otp->module_integrator_id = read_cmos_sensor(0x0A04);
-			otp->year = read_cmos_sensor(0x0A05);
-			otp->month= read_cmos_sensor(0x0A06);
-			otp->day= read_cmos_sensor(0x0A07);
-			otp->R_avg_H=read_cmos_sensor(0x0A0B);
-			otp->R_avg_L=read_cmos_sensor(0x0A0C);
-			otp->B_avg_H=read_cmos_sensor(0x0A0D);
-			otp->B_avg_L=read_cmos_sensor(0x0A0E);
-			otp->G_avg_H=read_cmos_sensor(0x0A0F);
-			otp->G_avg_L=read_cmos_sensor(0x0A10);
-			otp->R_gold_H=read_cmos_sensor(0x0A12);
-			otp->R_gold_L=read_cmos_sensor(0x0A13);
-			otp->B_gold_H=read_cmos_sensor(0x0A14);
-			otp->B_gold_L=read_cmos_sensor(0x0A15);	
-			otp->G_gold_H=read_cmos_sensor(0x0A16);
-			otp->G_gold_L=read_cmos_sensor(0x0A17);	
-			LOG_INF("[S5K5E2YA] [OTP] module id is %d\n",otp->module_integrator_id);
-			LOG_INF("[S5K5E2YA] [OTP] date is %d-%d-%d\n",otp->year,otp->month,otp->day);
-			LOG_INF("[S5K5E2YA] [OTP] R avg H is %d R avg L is %d\n",otp->R_avg_H,otp->R_avg_L);
-			LOG_INF("[S5K5E2YA] [OTP] B avg H is %d B avg L is %d\n",otp->B_avg_H,otp->B_avg_L);
-			LOG_INF("[S5K5E2YA] [OTP] G avg H is %d G avg L is %d\n",otp->G_avg_H,otp->G_avg_L);
-	         }
-		else if (ret==0xff&&ret1==0x1)
-		{
-			LOG_INF("[S5K5E2YA] [OTP] group2 is done");
-			otp->module_integrator_id = read_cmos_sensor(0x0A24);
-			otp->year = read_cmos_sensor(0x0A25);
-			otp->month= read_cmos_sensor(0x0A26);
-			otp->day= read_cmos_sensor(0x0A27);
-			otp->R_avg_H=read_cmos_sensor(0x0A2B);
-			otp->R_avg_L=read_cmos_sensor(0x0A2C);
-			otp->B_avg_H=read_cmos_sensor(0x0A2D);
-			otp->B_avg_L=read_cmos_sensor(0x0A2E);
-			otp->G_avg_H=read_cmos_sensor(0x0A2F);
-			otp->G_avg_L=read_cmos_sensor(0x0A30);
-			otp->R_gold_H=read_cmos_sensor(0x0A32);
-			otp->R_gold_L=read_cmos_sensor(0x0A33);
-			otp->B_gold_H=read_cmos_sensor(0x0A34);
-			otp->B_gold_L=read_cmos_sensor(0x0A35);	
-			otp->G_gold_H=read_cmos_sensor(0x0A36);
-			otp->G_gold_L=read_cmos_sensor(0x0A37);	
-			LOG_INF("[S5K5E2YA] [OTP] module id is %d\n",otp->module_integrator_id);
-			LOG_INF("[S5K5E2YA] [OTP] date is %d-%d-%d\n",otp->year,otp->month,otp->day);
-			LOG_INF("[S5K5E2YA] [OTP] R avg H is %d R avg L is %d\n",otp->R_avg_H,otp->R_avg_L);
-			LOG_INF("[S5K5E2YA] [OTP] B avg H is %d B avg L is %d\n",otp->B_avg_H,otp->B_avg_L);
-			LOG_INF("[S5K5E2YA] [OTP] G avg H is %d G avg L is %d\n",otp->G_avg_H,otp->G_avg_L);
-		}
-		else
-		{
-			LOG_INF("[S5K5E2YA] [OTP]no otp data");
-		}
-		write_cmos_sensor(0x0A00,0x04);
-		write_cmos_sensor(0x0A00, 0x00); //otp disable read
-		mdelay(10);
-		write_cmos_sensor(0x0100,0x01);
-	}	
-}
-
-void S5K5E2YA_MIPI_algorithm_otp_wb1(struct S5K5E2YA_MIPI_otp_struct *otp)
-{
-	kal_uint32 R_avg, B_avg, G_avg;
-	kal_uint32 R_gold, B_gold, G_gold;
-	kal_uint32 R_gain, B_gain, G_gain;
-	//kal_uint32 G_gain_R, G_gain_B;
-	kal_uint32 gain_default=0x0100;
-	R_avg = (((otp->R_avg_H)<<8)&0xff00)+(otp->R_avg_L&0xFF);
-	B_avg = (((otp->B_avg_H)<<8)&0xff00)+(otp->B_avg_L&0xFF);
-	G_avg = (((otp->G_avg_H)<<8)&0xff00)+(otp->G_avg_L&0xFF);
-	R_gold= (((otp->R_gold_H)<<8)&0xff00)+(otp->R_gold_L&0xFF);
-	B_gold= (((otp->B_gold_H)<<8)&0xff00)+(otp->B_gold_L&0xFF);
-	G_gold= (((otp->G_gold_H)<<8)&0xff00)+(otp->G_gold_L&0xFF);
-
-	LOG_INF("[S5K5E2YA] [OTP] R_avg=%d\n",R_avg);	
-	LOG_INF("[S5K5E2YA] [OTP] B_avg=%d\n",B_avg);	
-	LOG_INF("[S5K5E2YA] [OTP] G_avg=%d\n",G_avg);
-	LOG_INF("[S5K5E2YA] [OTP] R_gold=%d\n",R_gold);	
-	LOG_INF("[S5K5E2YA] [OTP] B_gold=%d\n",B_gold);	
-	LOG_INF("[S5K5E2YA] [OTP] G_gold=%d\n",G_gold);
-	kal_uint32 Golden_RG = (R_gold*1000)/G_gold;
-	kal_uint32 Golden_BG = (B_gold*1000)/G_gold;
-
-	kal_uint32 Current_RG = (R_avg*1000)/G_avg;
-	kal_uint32 Current_BG = (B_avg*1000)/G_avg;
-	
-	kal_uint32 R_ration=(Golden_RG*1000)/Current_RG;
-	kal_uint32 B_ration=(Golden_BG*1000)/Current_BG;
-	LOG_INF("[S5K5E2YA] [OTP] Golden_RG=0x%x\n",Golden_RG);
-	LOG_INF("[S5K5E2YA] [OTP] Golden_BG=0x%x\n",Golden_BG);
-	LOG_INF("[S5K5E2YA] [OTP] Current_RG=0x%x\n",Current_RG);
-	LOG_INF("[S5K5E2YA] [OTP] Current_BG=0x%x\n",Current_BG);
-	LOG_INF("[S5K5E2YA] [OTP] R_ration=0x%x\n",R_ration);
-	LOG_INF("[S5K5E2YA] [OTP] B_ration=0x%x\n",B_ration);
-	if (R_ration>=1000)
-	{
-		if (B_ration>=1000)
-		{
-			G_gain=gain_default ;
-			R_gain=gain_default*R_ration/1000;
-			B_gain=gain_default*B_ration/1000;
-		}
-		else
-		{
-			B_gain=gain_default;
-			G_gain=gain_default*1000/B_ration;
-			R_gain=gain_default*R_ration/B_ration;
-		}
-	}
-	else
-	{
-		if (B_ration>=1000)
-		{
-			R_gain=gain_default;
-			G_gain=gain_default*1000/R_ration;
-			B_gain=gain_default*B_ration/R_ration;
-		}
-		else if( (R_ration >= B_ration) && (B_ration < 1000))
-		{
-			B_gain=gain_default;
-			G_gain=gain_default*1000/B_ration;
-			R_gain=gain_default*R_ration/B_ration;
-		}
-		else
-		{
-			R_gain=gain_default;
-			G_gain=gain_default*1000/R_ration;
-			B_gain=gain_default*B_ration/R_ration;
-		}
-	}
-
-	otp->R_Gain = R_gain;
-	otp->B_Gain = B_gain;
-	otp->G_Gain = G_gain;
-
-	LOG_INF("[S5K5E2YA] [OTP] R_gain=0x%x\n",otp->R_Gain);	
-	LOG_INF("[S5K5E2YA] [OTP] B_gain=0x%x\n",otp->B_Gain);	
-	LOG_INF("[S5K5E2YA] [OTP] G_gain=0x%x\n",otp->G_Gain);
-}
-
-
-
-void S5K5E2YA_MIPI_write_otp_wb(struct S5K5E2YA_MIPI_otp_struct *otp)
-{
-	kal_uint16 R_GainH, B_GainH, G_GainH;
-	kal_uint16 R_GainL, B_GainL, G_GainL;
-	kal_uint32 temp;
-
-	temp = otp->R_Gain;
-	R_GainH = (temp & 0xff00)>>8;
-	temp = otp->R_Gain;
-	R_GainL = (temp & 0x00ff);
-
-	temp = otp->B_Gain;
-	B_GainH = (temp & 0xff00)>>8;
-	temp = otp->B_Gain;
-	B_GainL = (temp & 0x00ff);
-
-	temp = otp->G_Gain;
-	G_GainH = (temp & 0xff00)>>8;
-	temp = otp->G_Gain;
-	G_GainL = (temp & 0x00ff);
-
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] R_GainH=0x%x\n", R_GainH);	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] R_GainL=0x%x\n", R_GainL);	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] B_GainH=0x%x\n", B_GainH);
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] B_GainL=0x%x\n", B_GainL);	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] G_GainH=0x%x\n", G_GainH);	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] G_GainL=0x%x\n", G_GainL);
-
-	write_cmos_sensor(0x020e, G_GainH);
-	write_cmos_sensor(0x020f, G_GainL);
-	write_cmos_sensor(0x0210, R_GainH);
-	write_cmos_sensor(0x0211, R_GainL);
-	write_cmos_sensor(0x0212, B_GainH);
-	write_cmos_sensor(0x0213, B_GainL);
-	write_cmos_sensor(0x0214, G_GainH);
-	write_cmos_sensor(0x0215, G_GainL);
-
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x020e,0x%x]\n", read_cmos_sensor(0x020e));	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x020f,0x%x]\n", read_cmos_sensor(0x020f));	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0210,0x%x]\n", read_cmos_sensor(0x0210));
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0211,0x%x]\n", read_cmos_sensor(0x0211));	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0212,0x%x]\n", read_cmos_sensor(0x0212));	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0213,0x%x]\n", read_cmos_sensor(0x0213));
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0214,0x%x]\n", read_cmos_sensor(0x0214));	
-	LOG_INF("[S5K5E2YA] [S5K5E2YA_MIPI_read_otp_wb] [0x0215,0x%x]\n", read_cmos_sensor(0x0215));
-}
-void S5K5E2YA_MIPI_LSC_from_otp(void)
-{
-	//kal_uint16 PageCount,i;
-	//kal_uint32 temp[64]={0};
-	ushort value1=0;
-	ushort value2=0;
-	ushort value3=0;
-	ushort value4=0;
-	/*for(PageCount = 9; PageCount<=15; PageCount++)
-	{
-	LOG_INF("[S5K5E2YA] [OTP] LSC PageCount=%d\n", PageCount); 
-
-	write_cmos_sensor(0x0100,0x00);
-	mdelay(10);
-	write_cmos_sensor(0x0A00,0x04);
-	write_cmos_sensor(0x0A02, PageCount); //page set
-	write_cmos_sensor(0x0A00, 0x01); //otp enable read
-	mdelay(100);
-	for(i=0;i<64;i++)
-	    {
-			temp[i]=read_cmos_sensor(0x0A04+i);
-			LOG_INF("[S5K5E2YA] [OTP] LSC temp[%d]=%d\n", i,temp[i]); 
-	     }
-	}*/
-
-	value1=read_cmos_sensor(0x0202);
-	value2=read_cmos_sensor(0x0203);
-	value3=read_cmos_sensor(0x0204);
-	value4=read_cmos_sensor(0x0205);
-	LOG_INF("[S5K5E2YA] [OTP] LSC value1=%d,value2=%d,value3=%d,value4=%d\n", value1,value2,value3,value4);
-	// Reset for operation																		   
-		write_cmos_sensor(0x0100, 0x00); //stream off
-		write_cmos_sensor(0x0103, 0x01);
-		mdelay(10);
-		write_cmos_sensor(0x340f, 0x81);
-		// Clock Setting
-		write_cmos_sensor(0x0305, 0x05); //PLLP (def:5)
-		write_cmos_sensor(0x0306, 0x00);
-		write_cmos_sensor(0x0307, 0xB3); //PLLM (def:CCh 204d --> B3h 179d)
-		write_cmos_sensor(0x3C1F, 0x00); //PLLS 
-		write_cmos_sensor(0x0820, 0x03); // requested link bit rate mbps : (def:3D3h 979d --> 35Bh 859d)
-		write_cmos_sensor(0x0821, 0x5B); 
-		write_cmos_sensor(0x3C1C, 0x58); //dbr_div
-		// Size Setting
-		write_cmos_sensor(0x0340, 0x07);// frame_length_lines : def. 1962d (7C2 --> 7A6 Mimnimum 22 lines)
-		write_cmos_sensor(0x0341, 0xA7);
-		write_cmos_sensor(0x0342, 0x0B);// line_length_pck : def. 2900d 
-		write_cmos_sensor(0x0343, 0x54);
-		write_cmos_sensor(0x0344, 0x00);// x_addr_start
-		write_cmos_sensor(0x0345, 0x00);
-		write_cmos_sensor(0x0346, 0x00);// y_addr_start
-		write_cmos_sensor(0x0347, 0x00);
-		write_cmos_sensor(0x0348, 0x0A);// x_addr_end : def. 2575d  
-		write_cmos_sensor(0x0349, 0x0F);
-		write_cmos_sensor(0x034A, 0x07);// y_addr_end : def. 1936d
-		write_cmos_sensor(0x034B, 0x8F);
-		write_cmos_sensor(0x034C, 0x0A);// x_output size : def. 2576d 
-		write_cmos_sensor(0x034D, 0x10);
-		write_cmos_sensor(0x034E, 0x07);// y_output size : def. 1936d
-		write_cmos_sensor(0x034F, 0x90);
-		//Digital Binning(default)
-		write_cmos_sensor(0x0900, 0x00);//0x0 Binning
-		write_cmos_sensor(0x0901, 0x20);
-		write_cmos_sensor(0x0387, 0x01);
-		//Integration time	
-		write_cmos_sensor(0x0202, value1);  // coarse integration
-		write_cmos_sensor(0x0203, value2);
-		
-		write_cmos_sensor(0x0200, 0x0A);  // fine integration (AA8h --> AC4h)
-		write_cmos_sensor(0x0201, 0x1A);
-		//Analog Timing Tuning (0923)
-		write_cmos_sensor(0X3000, 0x04);	 // ct_ld_start
-		write_cmos_sensor(0X3002, 0x03);	 // ct_sl_start
-		write_cmos_sensor(0X3003, 0x04);	 // ct_sl_margin
-		write_cmos_sensor(0X3004, 0x02);	 // ct_rx_start
-		write_cmos_sensor(0X3005, 0x00);	 // ct_rx_margin (MSB) 
-		write_cmos_sensor(0X3006, 0x10);	 // ct_rx_margin (LSB)
-		write_cmos_sensor(0X3007, 0x03);	 // ct_tx_start
-		write_cmos_sensor(0X3008, 0x55);	 // ct_tx_width
-		write_cmos_sensor(0X3039, 0x00);	 // cintc1_margin
-		write_cmos_sensor(0X303A, 0x00);	 // cintc2_margin
-		write_cmos_sensor(0X303B, 0x00);	 // offs_sh
-		write_cmos_sensor(0X3009, 0x05);	 // ct_srx_margin
-		write_cmos_sensor(0X300A, 0x55);	 // ct_stx_width
-		write_cmos_sensor(0X300B, 0x38);	 // ct_dstx_width
-		write_cmos_sensor(0X300C, 0x10);	 // ct_stx2dstx
-		write_cmos_sensor(0X3012, 0x05);	 // ct_cds_start
-		write_cmos_sensor(0X3013, 0x00);	 // ct_s1s_start
-		write_cmos_sensor(0X3014, 0x22);	 // ct_s1s_end
-		write_cmos_sensor(0X300E, 0x79);	 // ct_s3_width
-		write_cmos_sensor(0X3010, 0x68);	 // ct_s4_width
-		write_cmos_sensor(0X3019, 0x03);	 // ct_s4d_start
-		write_cmos_sensor(0X301A, 0x00);	 // ct_pbr_start
-		write_cmos_sensor(0X301B, 0x06);	 // ct_pbr_width
-		write_cmos_sensor(0X301C, 0x00);	 // ct_pbs_start
-		write_cmos_sensor(0X301D, 0x22);	 // ct_pbs_width
-		write_cmos_sensor(0X301E, 0x00);	 // ct_pbr_ob_start
-		write_cmos_sensor(0X301F, 0x10);	 // ct_pbr_ob_width
-		write_cmos_sensor(0X3020, 0x00);	 // ct_pbs_ob_start
-		write_cmos_sensor(0X3021, 0x00);	 // ct_pbs_ob_width
-		write_cmos_sensor(0X3022, 0x0A);	 // ct_cds_lim_start
-		write_cmos_sensor(0X3023, 0x1E);	 // ct_crs_start
-		write_cmos_sensor(0X3024, 0x00);	 // ct_lp_hblk_cds_start (MSB)
-		write_cmos_sensor(0X3025, 0x00);	 // ct_lp_hblk_cds_start (LSB)
-		write_cmos_sensor(0X3026, 0x00);	 // ct_lp_hblk_cds_end (MSB)
-		write_cmos_sensor(0X3027, 0x00);	 // ct_lp_hblk_cds_end (LSB)
-		write_cmos_sensor(0X3028, 0x1A);	 // ct_rmp_off_start
-		write_cmos_sensor(0X3015, 0x00);	 // ct_rmp_rst_start (MSB)
-		write_cmos_sensor(0X3016, 0x84);	 // ct_rmp_rst_start (LSB)
-		write_cmos_sensor(0X3017, 0x00);	 // ct_rmp_sig_start (MSB)
-		write_cmos_sensor(0X3018, 0xA0);	 // ct_rmp_sig_start (LSB)
-		write_cmos_sensor(0X302B, 0x10);	 // ct_cnt_margin
-		write_cmos_sensor(0X302C, 0x0A);	 // ct_rmp_per
-		write_cmos_sensor(0X302D, 0x06);	 // ct_cnt_ms_margin1
-		write_cmos_sensor(0X302E, 0x05);	 // ct_cnt_ms_margin2
-		write_cmos_sensor(0X302F, 0x0E);	 // rst_mx
-		write_cmos_sensor(0X3030, 0x2F);	 // sig_mx
-		write_cmos_sensor(0X3031, 0x08);	 // ct_latch_start
-		write_cmos_sensor(0X3032, 0x05);	 // ct_latch_width
-		write_cmos_sensor(0X3033, 0x09);	 // ct_hold_start
-		write_cmos_sensor(0X3034, 0x05);	 // ct_hold_width
-		write_cmos_sensor(0X3035, 0x00);	 // ct_lp_hblk_dbs_start (MSB)
-		write_cmos_sensor(0X3036, 0x00);	 // ct_lp_hblk_dbs_start (LSB)
-		write_cmos_sensor(0X3037, 0x00);	 // ct_lp_hblk_dbs_end (MSB)
-		write_cmos_sensor(0X3038, 0x00);	 // ct_lp_hblk_dbs_end (LSB)
-		write_cmos_sensor(0X3088, 0x06);	 // ct_lat_lsb_offset_start1
-		write_cmos_sensor(0X308A, 0x08);	 // ct_lat_lsb_offset_end1
-		write_cmos_sensor(0X308C, 0x05);	 // ct_lat_lsb_offset_start2
-		write_cmos_sensor(0X308E, 0x07);	 // ct_lat_lsb_offset_end2
-		write_cmos_sensor(0X3090, 0x06);	 // ct_conv_en_offset_start1
-		write_cmos_sensor(0X3092, 0x08);	 // ct_conv_en_offset_end1
-		write_cmos_sensor(0X3094, 0x05);	 // ct_conv_en_offset_start2
-		write_cmos_sensor(0X3096, 0x21);	 // ct_conv_en_offset_end2
-		//CDS
-		write_cmos_sensor(0x3099, 0x0E);  // cds_option ([3]:crs switch disable, s3,s4 strengthx16)
-		write_cmos_sensor(0x3070, 0x10);  // comp1_bias (default:77)
-		write_cmos_sensor(0x3085, 0x11);  // comp1_bias (gain1~4)
-		write_cmos_sensor(0x3086, 0x01);  // comp1_bias (gain4~8) 
-		//RMP
-		write_cmos_sensor(0x3064, 0x00);// Multiple sampling(gainx8,x16)
-		write_cmos_sensor(0x3062, 0x08);// off_rst
-		//DBR
-		write_cmos_sensor(0x3061, 0x11);// dbr_tune_rd (default :08, 0E 3.02V) 3.1V
-		write_cmos_sensor(0x307B, 0x20);// dbr_tune_rgsl (default :08)
-		//Bias sampling
-		write_cmos_sensor(0x3068, 0x00);// RMP BP bias sampling [0]: Disable
-		write_cmos_sensor(0x3074, 0x00);// Pixel bias sampling [2]:Default L
-		write_cmos_sensor(0x307D, 0x00);// VREF sampling [0] : Disable
-		write_cmos_sensor(0x3045, 0x01);// ct_opt_l1_start
-		write_cmos_sensor(0x3046, 0x05);// ct_opt_l1_width
-		write_cmos_sensor(0x3047, 0x78);
-		//Smart PLA
-		write_cmos_sensor(0x307F, 0xB1); //RDV_OPTION[5:4], RG default high
-		write_cmos_sensor(0x3098, 0x01); //CDS_OPTION[16] SPLA-II enable
-		write_cmos_sensor(0x305C, 0xF6); //lob_extension[6]
-		write_cmos_sensor(0x306B, 0x10); // [3]bls_stx_en disable
-		write_cmos_sensor(0x3063, 0x27); // ADC_SAT 490mV(19h) --> 610mV(2Fh) --> 570mV
-		write_cmos_sensor(0x320C, 0x07); // ADC_MAX (def:076Ch --> 0700h)
-		write_cmos_sensor(0x320D, 0x00);																		
-		write_cmos_sensor(0x0b00, 0x01);
-		write_cmos_sensor(0x3235, 0x49); // L/F-ADLC on
-		write_cmos_sensor(0x3233, 0x00); // D-pedestal L/F ADLC off (1FC0h)
-		write_cmos_sensor(0x3234, 0x00);
-		write_cmos_sensor(0x3300, 0x0D); //BPC bypass
-	//	write_cmos_sensor(0x0204, 0x00); //Analog gain x1
-	//	write_cmos_sensor(0x0205, 0x20);
-	
-		write_cmos_sensor(0x0204, value3);  // coarse integration
-		write_cmos_sensor(0x0205, value4);
-		
-		write_cmos_sensor(0x3400, 0x00);
-		mdelay(10);
-		write_cmos_sensor(0x3b4c, 0x00); 
-		write_cmos_sensor(0x3b4c, 0x01); 
-		// streaming ON
-		write_cmos_sensor(0x0100, 0x01); 
-	//write_cmos_sensor(0x0A00,0x04);
-	//write_cmos_sensor(0x0A00, 0x00); //otp disable read
-	//mdelay(10);
-	//write_cmos_sensor(0x0100,0x01);
-
-}
-void S5K5E2YA_MIPI_update_wb_register_from_otp(void)
-{
-	struct S5K5E2YA_MIPI_otp_struct current_otp;
-	S5K5E2YA_MIPI_read_otp_wb(&current_otp);
-	S5K5E2YA_MIPI_algorithm_otp_wb1(&current_otp);
-	S5K5E2YA_MIPI_write_otp_wb(&current_otp);
-	//S5K5E2YA_MIPI_LSC_from_otp();
-}
-#endif
