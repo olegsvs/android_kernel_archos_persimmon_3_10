@@ -40,7 +40,7 @@
 
 // Define I2C Bus Num
 #define SUPPORT_I2C_BUS_NUM1        0
-#define SUPPORT_I2C_BUS_NUM2        0
+#define SUPPORT_I2C_BUS_NUM2        2
 
 typedef enum{
 	VDD_None,

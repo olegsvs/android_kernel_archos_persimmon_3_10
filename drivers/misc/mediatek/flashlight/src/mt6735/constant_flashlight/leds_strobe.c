@@ -110,7 +110,7 @@ extern void sgm3785_FL_Enable(int duty);
 int FL_Enable(void)
 {
 
-#define FLASH_GPIO (80)
+#define FLASH_GPIO (43)
 mt_set_gpio_mode(FLASH_GPIO, 0);
 mt_set_gpio_dir(FLASH_GPIO, GPIO_DIR_OUT);
 mt_set_gpio_out(FLASH_GPIO, GPIO_OUT_ONE);
