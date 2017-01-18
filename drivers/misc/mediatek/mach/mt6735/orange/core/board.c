@@ -145,7 +145,7 @@ void mt_power_off(void)
 		//Phone	
 		printk("Phone with charger\n");
 		if (pmic_chrdet_status() == KAL_TRUE)
-			arch_reset(0, "power_off_with_charger");
+			arch_reset(0, "charger");
 #endif
     }
 }
@@ -1038,7 +1038,7 @@ EXPORT_SYMBOL(mt_wifi_power_off);
         .ett_count            = 0, //should be same with ett_settings array size
         .host_function        = MSDC_SD,
         .boot	                = 0,
-        .cd_level             = MSDC_CD_HIGH,
+        .cd_level             = MSDC_CD_LOW,
     };
   #endif
 #endif
@@ -1082,7 +1082,7 @@ EXPORT_SYMBOL(mt_wifi_power_off);
         .ett_count            = 0, //should be same with ett_settings array size
         .host_function        = MSDC_SD,
         .boot	                = 0,
-        .cd_level             = MSDC_CD_HIGH,
+        .cd_level             = MSDC_CD_LOW,
     };
 #endif
 
@@ -1154,7 +1154,7 @@ EXPORT_SYMBOL(mt_wifi_power_off);
         .ett_count            = 0, //should be same with ett_settings array size
         .host_function        = MSDC_SD,
         .boot	                = 0,
-        .cd_level             = MSDC_CD_HIGH,
+        .cd_level             = MSDC_CD_LOW,
 };
 #endif
 #endif
