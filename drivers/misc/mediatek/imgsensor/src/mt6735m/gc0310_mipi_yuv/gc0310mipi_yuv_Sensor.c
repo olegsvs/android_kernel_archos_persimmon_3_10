@@ -1497,7 +1497,7 @@ UINT32 GC0310Preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
     image_window->ExposureWindowWidth = IMAGE_SENSOR_PV_WIDTH;
     image_window->ExposureWindowHeight =IMAGE_SENSOR_PV_HEIGHT;
 
-    GC0310_Set_Mirrorflip(IMAGE_NORMAL);
+    GC0310_Set_Mirrorflip(IMAGE_HV_MIRROR);
     
 
     // copy sensor_config_data
