@@ -1,0 +1,1 @@
+arch/arm/boot/dts/orange.dtb: arch/arm/boot/dts/.orange.dtb.dts.tmp arch/arm/boot/dts/mt6735m.dtsi /home/oleg_texet/krnl/android_kernel_archos_persimmon_3_10/drivers/misc/mediatek/mach/mt6735/orange/dct/dct/cust_eint.dtsi

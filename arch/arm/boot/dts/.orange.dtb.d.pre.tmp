@@ -1,0 +1,1 @@
+orange.o: arch/arm/boot/dts/orange.dts
